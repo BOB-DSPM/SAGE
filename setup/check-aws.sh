@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-aws.sh
-# 목적: (1) AWS CLI 설치/검증 → (2) 필요 시 aws configure 인터랙티브 입력
-#      (3) Steampipe 설치/실행 → (4) DSPM_Data-Collector 클론 → (5) API 0.0.0.0:8000 백그라운드 기동
+# 목적: (1) 필수 패키지 설치 → (2) AWS CLI 설치/검증 → (3) 필요 시 aws configure 인터랙티브 입력
+#      (4) Steampipe 설치/실행 → (5) DSPM_Data-Collector 클론 → (6) API 0.0.0.0:8000 백그라운드 기동
 # 사용법: 환경변수 없이 그냥 ./setup/check-aws.sh 실행 (configure 단계에서만 입력 받음)
 
 set -euo pipefail
@@ -40,16 +40,78 @@ check_net() {
   warn "네트워크 불안정 — 설치/클론 실패 가능"
 }
 
+### ===== 필수 패키지 보장 (curl, unzip, tar, gzip, lsof, ca-certificates) =====
+ensure_packages() {
+  local pm; pm="$(detect_pm)"
+  check_net || true
+
+  # 각 커맨드 존재 여부 확인 후 패키지 이름 매핑
+  need_pkgs=()
+
+  # curl
+  command -v curl >/dev/null 2>&1 || need_pkgs+=("curl")
+  # unzip
+  command -v unzip >/dev/null 2>&1 || need_pkgs+=("unzip")
+  # lsof
+  command -v lsof >/dev/null 2>&1 || need_pkgs+=("lsof")
+  # tar
+  command -v tar >/dev/null 2>&1 || need_pkgs+=("tar")
+  # gzip
+  command -v gzip >/dev/null 2>&1 || need_pkgs+=("gzip")
+  # ca-certificates (맥은 생략)
+  if [ "$pm" != "brew" ]; then
+    [ -f /etc/ssl/certs/ca-certificates.crt ] || need_pkgs+=("ca-certificates")
+  fi
+
+  if [ "${#need_pkgs[@]}" -eq 0 ]; then
+    ok "필수 패키지 이미 설치됨"
+    return
+  fi
+
+  log "필수 패키지 설치: ${need_pkgs[*]}"
+  case "$pm" in
+    apt)
+      DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y
+      # tar/gzip은 기본 설치지만 누락 대비 포함
+      DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y "${need_pkgs[@]}"
+      ;;
+    dnf|yum)
+      $SUDO "$pm" install -y "${need_pkgs[@]}"
+      ;;
+    pacman)
+      $SUDO pacman -Sy --noconfirm "${need_pkgs[@]}"
+      ;;
+    zypper)
+      $SUDO zypper --non-interactive refresh
+      $SUDO zypper --non-interactive install "${need_pkgs[@]}"
+      ;;
+    brew)
+      # macOS: 기본적으로 curl/tar/gzip 있음. 없을 수 있는 unzip/lsof만 처리.
+      for p in "${need_pkgs[@]}"; do
+        case "$p" in
+          unzip|lsof|curl) brew list --versions "$p" >/dev/null 2>&1 || brew install "$p" ;;
+          *) : ;; # tar/gzip/ca-certificates는 보통 불필요
+        esac
+      done
+      ;;
+    *)
+      err "패키지 매니저를 인식하지 못했습니다. 필수 패키지를 수동 설치하세요."
+      exit 1
+      ;;
+  esac
+  ok "필수 패키지 설치 완료"
+}
+
 ### ===== 공통 보장 도구 =====
 ensure_git() {
   if command -v git >/dev/null 2>&1; then ok "git: $(git --version)"; return; fi
   local pm; pm="$(detect_pm)"; check_net || true
   case "$pm" in
-    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git ca-certificates curl unzip ;;
-    dnf)    $SUDO dnf install -y git ca-certificates curl unzip ;;
-    yum)    $SUDO yum install -y git ca-certificates curl unzip ;;
-    pacman) $SUDO pacman -Sy --noconfirm git ca-certificates curl unzip ;;
-    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install git ca-certificates curl unzip ;;
+    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git ;;
+    dnf)    $SUDO dnf install -y git ;;
+    yum)    $SUDO yum install -y git ;;
+    pacman) $SUDO pacman -Sy --noconfirm git ;;
+    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install git ;;
     brew)   brew update; brew install git ;;
     *)      err "패키지 매니저를 인식하지 못했습니다. Git 수동 설치 필요."; exit 1 ;;
   esac
@@ -74,7 +136,7 @@ ensure_python() {
 install_awscli() {
   check_net || true
   local os="$(uname -s)" arch="$(uname -m)"
-  if [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+  if [ "$os" = "Darwin" ] && command -v brew >/dev/null 2;&1; then
     log "Homebrew로 AWS CLI 설치"; brew update; brew install awscli; return
   fi
   local url=""
@@ -161,7 +223,7 @@ ensure_steampipe() {
         warn "공식 스크립트 실패 → GitHub raw로 재시도(user)"
         curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash -s -- -b "$dest"
       fi
-    fi
+    end
     export PATH="$dest:$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
     command -v steampipe >/dev/null 2>&1 || { err "steampipe 설치 실패"; exit 1; }
     ok "steampipe: $(steampipe -v | head -n1)"
@@ -233,6 +295,7 @@ run_api_bg() {
 ### ===== 엔트리포인트 =====
 main() {
   check_net || true
+  ensure_packages      # <-- 필수 패키지 먼저 확보!
   ensure_git
   ensure_python
   ensure_awscli
