@@ -72,23 +72,29 @@ ensure_python() {
   fi
 }
 
-### ===== Steampipe 보장 (AWS 플러그인 포함) =====
 ensure_steampipe() {
-  # PATH 보정 (공식 스크립트는 ~/.steampipe/bin 에 설치)
+  # PATH 보정
   export PATH="$HOME/.steampipe/bin:$PATH"
 
   if command -v steampipe >/dev/null 2>&1; then
     ok "steampipe: $(steampipe -v | head -n1)"
   else
-    local pm; pm="$(detect_pm)"; check_net || true
-    case "$pm" in
-      brew)  log "brew로 steampipe 설치"; brew update; brew install steampipe ;;
-      *)     log "공식 스크립트로 steampipe 설치"; curl -sL https://steampipe.io/install.sh | bash ;;
-    esac
-    export PATH="$HOME/.steampipe/bin:$PATH"
-    command -v steampipe >/dev/null 2>&1 || { err "steampipe 설치 실패"; exit 1; }
-    ok "steampipe 설치 완료: $(steampipe -v | head -n1)"
+    check_net || true
+    log "Steampipe 설치 시도 (공식 스크립트)"
+    # 공식 스크립트 경로 (권장)
+    if curl -fsSL https://steampipe.io/install/steampipe.sh | bash; then
+      :
+    else
+      warn "공식 스크립트 실패 → GitHub raw 스크립트로 재시도"
+      curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash || {
+        err "Steampipe 설치 실패"; exit 1;
+      }
+    fi
   fi
+
+  export PATH="$HOME/.steampipe/bin:$PATH"
+  command -v steampipe >/dev/null 2>&1 || { err "steampipe 명령어가 PATH에 없습니다 (~/.steampipe/bin 확인)"; exit 1; }
+  ok "steampipe 설치 완료: $(steampipe -v | head -n1)"
 
   # AWS 플러그인
   if steampipe plugin list 2>/dev/null | grep -q '^aws'; then
@@ -105,10 +111,11 @@ ensure_steampipe() {
     log "steampipe service start"
     steampipe service start
     sleep 1
-    steampipe service status || { err "steampipe service 기동 실패"; exit 1; }
+    steampipe service status >/dev/null 2>&1 || { err "steampipe service 기동 실패"; exit 1; }
     ok "steampipe service 실행"
   fi
 }
+
 
 ### ===== 레포 클론/업데이트 =====
 clone_or_update() {
