@@ -178,6 +178,62 @@ ensure_steampipe() {
   fi
 }
 
+ensure_python_venv_ready() {
+  # ensurepip/venv 가 있는지 확인
+  if python3 -m ensurepip --version >/dev/null 2>&1 && python3 -c "import venv" >/dev/null 2>&1; then
+    ok "Python venv/ensurepip 사용 가능"
+    return
+  fi
+
+  warn "Python venv/ensurepip 미탑재 → 패키지 설치 시도"
+  local pm; pm="$(detect_pm)"
+
+  case "$pm" in
+    apt)
+      # 현재 시스템 파이썬 버전 추출 (예: 3.12)
+      PYMINOR="$(python3 -c 'import sys;print(f\"{sys.version_info.major}.{sys.version_info.minor}\")' 2>/dev/null || echo 3.12)"
+      DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y
+      # 정확 버전 venv 우선 설치, 실패하면 메타패키지로 재시도
+      $SUDO apt-get install -y "python${PYMINOR}-venv" python3-pip || \
+      $SUDO apt-get install -y python3-venv python3-pip
+      ;;
+    dnf|yum)
+      # Fedora/RHEL 계열은 보통 venv 내장. ensurepip만 없으면 pip 설치.
+      $SUDO "$pm" install -y python3 python3-pip || true
+      ;;
+    zypper)
+      # OpenSUSE: python3-venv 또는 python311-venv
+      $SUDO zypper --non-interactive refresh
+      $SUDO zypper --non-interactive install python3-venv python3-pip || \
+      $SUDO zypper --non-interactive install python311-venv python311-pip || true
+      ;;
+    pacman)
+      # Arch는 기본 python 패키지에 venv 포함
+      $SUDO pacman -Sy --noconfirm python python-pip || true
+      ;;
+    brew)
+      brew update
+      brew install python || true
+      ;;
+    *)
+      warn "패키지 매니저 인식 실패 — venv 대안(virtualenv) 사용 시도"
+      ;;
+  esac
+
+  # 다시 확인
+  if python3 -m ensurepip --version >/dev/null 2>&1 && python3 -c "import venv" >/dev/null 2>&1; then
+    ok "Python venv/ensurepip 준비 완료"
+    return
+  fi
+
+  # 최후의 보루: virtualenv로 대체
+  warn "venv 여전히 불가 → virtualenv로 대체"
+  python3 -m ensurepip --default-pip >/dev/null 2>&1 || true
+  python3 -m pip install --user --upgrade pip virtualenv
+  export PATH="$HOME/.local/bin:$PATH"
+  command -v virtualenv >/dev/null 2>&1 || { err "virtualenv 설치 실패"; exit 1; }
+  ok "virtualenv 사용 가능"
+}
 
 ### ===== 레포 클론/업데이트 =====
 clone_or_update() {
@@ -260,6 +316,7 @@ main() {
   ensure_base_pkgs
   ensure_git
   ensure_python
+  ensure_python_venv_ready 
   ensure_steampipe
   clone_or_update
   run_api_bg
