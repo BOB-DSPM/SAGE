@@ -83,6 +83,7 @@ fi
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 
+cd dspm-analyzer
 ### 3) 의존성 설치 (requirements.txt + 추가 패키지)
 if [ -f "requirements.txt" ]; then
   log "requirements.txt 설치"
