@@ -38,6 +38,26 @@ check_net() {
   warn "네트워크 불안정 — 설치/클론 실패 가능"
 }
 
+### ===== 필수 패키지 보장 (curl, unzip, lsof) =====
+ensure_base_pkgs() {
+  local pm; pm="$(detect_pm)"
+  local -a need=()
+  command -v curl  >/dev/null 2>&1 || need+=("curl")
+  command -v unzip >/dev/null 2>&1 || need+=("unzip")
+  command -v lsof  >/dev/null 2>&1 || need+=("lsof")
+  [ "${#need[@]}" -eq 0 ] && { ok "필수 패키지 이미 설치됨"; return; }
+  log "필수 패키지 설치: ${need[*]}"
+  case "$pm" in
+    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y "${need[@]}";;
+    dnf|yum)$SUDO "$pm" install -y "${need[@]}";;
+    pacman) $SUDO pacman -Sy --noconfirm "${need[@]}";;
+    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install "${need[@]}";;
+    brew)   for p in "${need[@]}"; do brew list --versions "$p" >/dev/null 2>&1 || brew install "$p"; done;;
+    *)      err "패키지 매니저를 인식하지 못했습니다. 수동 설치 필요.";;
+  esac
+  ok "필수 패키지 설치 완료"
+}
+
 ### ===== Git 보장 =====
 ensure_git() {
   if command -v git >/dev/null 2>&1; then ok "git: $(git --version)"; return; fi
@@ -62,7 +82,7 @@ ensure_python() {
     local pm; pm="$(detect_pm)"; check_net || true
     case "$pm" in
       apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y python3 python3-venv python3-pip ;;
-      dnf|yum)$SUDO "${pm}" install -y python3 python3-pip ;;  # venv 내장
+      dnf|yum)$SUDO "${pm}" install -y python3 python3-pip ;;
       pacman) $SUDO pacman -Sy --noconfirm python python-pip ;;
       zypper) $SUDO zypper --non-interactive install python3 python3-pip python3-venv || $SUDO zypper --non-interactive install python311 python311-pip ;;
       brew)   brew update; brew install python ;;
@@ -72,47 +92,33 @@ ensure_python() {
   fi
 }
 
-### ===== Steampipe 보장 (권한/경로 자동 처리) =====
+### ===== Steampipe 보장 (유저 홈 설치 → 선택적 symlink) =====
 ensure_steampipe() {
-  # 사용자/홈 경로 우선 추가
-  export PATH="$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
-
+  # 항상 유저 홈에 설치 (공식 스크립트에 인자 없이 실행) → -b 인자 미사용!
+  export PATH="$HOME/.steampipe/bin:$HOME/.local/bin:$PATH"
   if command -v steampipe >/dev/null 2>&1; then
     ok "steampipe: $(steampipe -v | head -n1)"
   else
     check_net || true
-
-    # 설치 대상 경로 결정
-    dest="/usr/local/bin"
-    if [ -n "$SUDO" ]; then
-      # 시스템 경로 설치 (sudo 사용)
-      log "Steampipe 설치 → ${dest} (sudo)"
-      if curl -fsSL https://steampipe.io/install/steampipe.sh | $SUDO bash -s -- -b "$dest"; then
-        :
-      else
-        warn "공식 스크립트 실패 → GitHub raw 스크립트로 재시도 (sudo)"
-        curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | $SUDO bash -s -- -b "$dest" || {
-          err "Steampipe 설치 실패"; exit 1;
-        }
-      fi
-    else
-      # 사용자 경로 설치 (sudo 없이)
-      dest="$HOME/.local/bin"
-      mkdir -p "$dest"
-      log "Steampipe 설치 → ${dest} (사용자 영역)"
-      if curl -fsSL https://steampipe.io/install/steampipe.sh | bash -s -- -b "$dest"; then
-        :
-      else
-        warn "공식 스크립트 실패 → GitHub raw 스크립트로 재시도 (user)"
-        curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash -s -- -b "$dest" || {
-          err "Steampipe 설치 실패"; exit 1;
-        }
-      fi
+    log "Steampipe 설치(사용자 홈: ~/.steampipe)"
+    if ! curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash; then
+      err "Steampipe 설치 실패"; exit 1
     fi
+    export PATH="$HOME/.steampipe/bin:$PATH"
+    command -v steampipe >/dev/null 2>&1 || { err "steampipe PATH 반영 실패"; exit 1; }
+    ok "steampipe: $(steampipe -v | head -n1)"
+    # 로그인 쉘에 PATH 영구 반영
+    if ! grep -q '.steampipe/bin' "$HOME/.bashrc" 2>/dev/null; then
+      echo 'export PATH="$HOME/.steampipe/bin:$PATH"' >> "$HOME/.bashrc"
+    fi
+  fi
 
-    export PATH="$dest:$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
-    command -v steampipe >/dev/null 2>&1 || { err "steampipe 명령어가 PATH에 없습니다 (${dest} 또는 ~/.steampipe/bin 확인)"; exit 1; }
-    ok "steampipe 설치 완료: $(steampipe -v | head -n1)"
+  # 선택: sudo 가능하면 /usr/local/bin 에 심볼릭 링크(전역 실행 편의)
+  if [ -n "$SUDO" ] && [ -x "$HOME/.steampipe/bin/steampipe" ]; then
+    if [ ! -e /usr/local/bin/steampipe ] || [ ! -L /usr/local/bin/steampipe ]; then
+      log "전역 명령 연결: /usr/local/bin/steampipe → ~/.steampipe/bin/steampipe"
+      $SUDO ln -sf "$HOME/.steampipe/bin/steampipe" /usr/local/bin/steampipe || true
+    fi
   fi
 
   # AWS 플러그인
@@ -139,11 +145,9 @@ ensure_steampipe() {
 clone_or_update() {
   if [ -d "$TARGET_DIR/.git" ]; then
     log "기존 레포 → 업데이트"
-    pushd "$TARGET_DIR" >/dev/null
-    git fetch --all --prune
-    git checkout "$BRANCH"
-    git pull --ff-only origin "$BRANCH" || { warn "FF 불가 → rebase"; git pull --rebase origin "$BRANCH"; }
-    popd >/dev/null
+    git -C "$TARGET_DIR" fetch --all --prune
+    git -C "$TARGET_DIR" checkout "$BRANCH"
+    git -C "$TARGET_DIR" pull --ff-only origin "$BRANCH" || git -C "$TARGET_DIR" pull --rebase origin "$BRANCH"
   else
     if [ -e "$TARGET_DIR" ] && [ ! -d "$TARGET_DIR/.git" ]; then
       ts="$(date +%Y%m%d-%H%M%S)"; mv "$TARGET_DIR" "${TARGET_DIR}.bak-${ts}"; warn "동명 폴더 백업함"
@@ -199,7 +203,6 @@ run_api_bg() {
   logfile="logs/collector-api-${ts}.log"
 
   ok "Collector API 백그라운드 시작: HOST=${API_HOST} PORT=${API_PORT}"
-  # uvicorn 백그라운드 실행
   HOST="${API_HOST}" PORT="${API_PORT}" nohup python -m uvicorn main:app --host "${API_HOST}" --port "${API_PORT}" --reload >"${logfile}" 2>&1 &
 
   pid="$!"
@@ -212,6 +215,7 @@ run_api_bg() {
 ### ===== 엔트리포인트 =====
 main() {
   check_net || true
+  ensure_base_pkgs
   ensure_git
   ensure_python
   ensure_steampipe
