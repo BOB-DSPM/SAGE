@@ -196,17 +196,18 @@ clone_or_update() {
   ok "레포 준비 완료: $TARGET_DIR"
 }
 
-### ===== API 백엔드 설치/실행 (uvicorn) =====
+
 run_api_bg() {
-  cd "$TARGET_DIR"
+  # 1) DSPM 폴더로 이동
+  cd "$TARGET_DIR"  || { err "디렉터리 없음: $TARGET_DIR"; exit 1; }
   mkdir -p logs
 
-  # 기존 프로세스 처리
+  # 2) 기존 백엔드가 돌고 있으면 종료(옵션)
   if [ -f ".pid" ]; then
     old_pid="$(cat .pid || true)"
     if [ -n "${old_pid:-}" ] && kill -0 "$old_pid" >/dev/null 2>&1; then
-      if [ "$FORCE_RESTART" = "1" ]; then
-        warn "기존 API 프로세스(${old_pid}) 종료"
+      if [ "${FORCE_RESTART:-1}" = "1" ]; then
+        warn "기존 API(PID=${old_pid}) 종료 후 재시작"
         kill "$old_pid" || true
         sleep 1
       else
@@ -215,7 +216,7 @@ run_api_bg() {
     fi
   fi
 
-  # venv 생성/활성화
+  # 3) 가상환경 준비 및 활성화
   if [ ! -d ".venv" ]; then
     log "Python venv 생성(.venv)"
     python3 -m venv .venv
@@ -223,6 +224,7 @@ run_api_bg() {
   # shellcheck disable=SC1091
   . ".venv/bin/activate"
 
+  # 4) 패키지 설치 (requirements.txt 있으면 그걸, 없으면 최소 패키지)
   python -m pip install --upgrade pip >/dev/null
   if [ -f "requirements.txt" ]; then
     log "requirements 설치"
@@ -232,23 +234,25 @@ run_api_bg() {
     pip install fastapi uvicorn steampipe
   fi
 
-  # 포트 점유 안내
-  if command -v lsof >/dev/null 2>&1 && lsof -iTCP:"${API_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "PORT ${API_PORT} 사용 중인 프로세스가 존재합니다."
-  fi
-
+  # 5) uvicorn 백그라운드 실행 (로그/ PID 관리)
   ts="$(date +%Y%m%d-%H%M%S)"
   logfile="logs/collector-api-${ts}.log"
 
-  ok "Collector API 백그라운드 시작: HOST=${API_HOST} PORT=${API_PORT}"
-  HOST="${API_HOST}" PORT="${API_PORT}" nohup python -m uvicorn main:app --host "${API_HOST}" --port "${API_PORT}" --reload >"${logfile}" 2>&1 &
+  ok "Collector API 백그라운드 시작: HOST=${API_HOST:-0.0.0.0} PORT=${API_PORT:-8000}"
+  HOST="${API_HOST:-0.0.0.0}" PORT="${API_PORT:-8000}" \
+    nohup python -m uvicorn main:app \
+      --host "${API_HOST:-0.0.0.0}" \
+      --port "${API_PORT:-8000}" \
+      --reload \
+      > "${logfile}" 2>&1 &
 
-  pid="$!"
-  echo "${pid}" > .pid
-  ok "PID=${pid} (로그: ${logfile})"
-  log "로그 보기: tail -f \"${logfile}\""
+  echo "$!" > .pid
+  ok "PID=$(cat .pid) (로그: ${logfile})"
+  log "최근 로그: tail -n 200 -f ${logfile}"
   log "중지: kill \$(cat .pid)"
 }
+
+
 
 ### ===== 엔트리포인트 =====
 main() {
