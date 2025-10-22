@@ -1,124 +1,194 @@
 #!/usr/bin/env bash
-# setup-analyzer.sh (ko_spacy 제거 + 한국어 대안 추가: stanza / spacy-udpipe)
-# 사용법: bash setup-analyzer.sh
-# 환경변수:
-#   REPO_BRANCH=analyzer
-#   REPO_DIR=DSPM_DATA-Identification-Classification
-#   APP_MODULE="app.main:app"
-#   PORT=8400
+# run_lineage.sh — DSPM Lineage API 설치/실행 스크립트
+# 사용법:
+#   ./run_lineage.sh            # 기본: 설치 + 백그라운드 실행
+#   ./run_lineage.sh stop       # 중지
+#   ./run_lineage.sh restart    # 재시작
+#   ./run_lineage.sh status     # 상태 확인
 
 set -euo pipefail
 
-REPO_URL="https://github.com/BOB-DSPM/DSPM_DATA-Identification-Classification.git"
-REPO_BRANCH="${REPO_BRANCH:-analyzer}"
-REPO_DIR="${REPO_DIR:-DSPM_DATA-Identification-Classification}"
-PORT="${PORT:-8400}"
-APP_MODULE="${APP_MODULE:-}"
+### ==========================
+### 설정
+### ==========================
+REPO_URL="https://github.com/BOB-DSPM/DSPM_DATA-Lineage-Tracking.git"
+REPO_DIR="${REPO_DIR:-DSPM_DATA-Lineage-Tracking}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_DIR="${VENV_DIR:-.venv}"
+HOST="${HOST:-0.0.0.0}"
+PORT="${PORT:-8300}"
+LOG_DIR="${LOG_DIR:-logs}"
+PID_FILE="${PID_FILE:-.uvicorn.pid}"
+UVICORN_CMD=( "${PYTHON_BIN}" -m uvicorn api:app --reload --host "${HOST}" --port "${PORT}" )
 
-log(){ printf "[%s] %s\n" "$(date +'%F %T')" "$*"; }
-need_cmd(){ command -v "$1" >/dev/null 2>&1; }
+### ==========================
+### 공통 함수
+### ==========================
+msg() { printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 
-install_if_missing(){
-  local pkg="$1"
-  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-    log "APT 설치: $pkg"
-    sudo apt-get update -y
-    sudo apt-get install -y "$pkg"
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "필요한 명령어가 없습니다: $1" >&2
+    exit 1
+  }
+}
+
+ensure_python_venv() {
+  # python3-venv 미설치로 venv 실패하는 환경(우분투 등) 대비
+  if ! "${PYTHON_BIN}" -m venv --help >/dev/null 2>&1; then
+    if command -v apt >/dev/null 2>&1; then
+      msg "python3-venv가 없어 설치합니다 (sudo 권한 필요할 수 있음)"
+      sudo apt update -y
+      sudo apt install -y python3-venv
+    else
+      echo "python3-venv 모듈이 필요합니다. OS의 패키지 매니저로 설치 후 다시 시도하세요." >&2
+      exit 1
+    fi
   fi
 }
 
-# 0) 기본 도구
-if grep -qiE "ubuntu|debian" /etc/os-release; then
-  need_cmd git || install_if_missing git
-  need_cmd python3 || install_if_missing python3
-  python3 -m venv --help >/dev/null 2>&1 || install_if_missing python3-venv
-  need_cmd gcc || install_if_missing build-essential
-  install_if_missing python3-pip || true
-fi
+activate_venv() {
+  # shellcheck disable=SC1091
+  . "${VENV_DIR}/bin/activate"
+}
 
-# 1) 레포
-if [ -d "$REPO_DIR/.git" ]; then
-  log "기존 레포 갱신: $REPO_DIR ($REPO_BRANCH)"
-  git -C "$REPO_DIR" fetch origin "$REPO_BRANCH" --depth=1
-  git -C "$REPO_DIR" checkout -q "$REPO_BRANCH"
-  git -C "$REPO_DIR" reset --hard "origin/$REPO_BRANCH"
-else
-  log "레포 클론: $REPO_URL ($REPO_BRANCH)"
-  git clone --branch "$REPO_BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR"
-fi
-
-cd "$REPO_DIR"
-
-# 2) venv
-if [ ! -d ".venv" ]; then
-  log "가상환경 생성(.venv)"
-  python3 -m venv .venv
-fi
-# shellcheck disable=SC1091
-source .venv/bin/activate
-python -m pip install -U pip setuptools wheel
-
-# 3) 의존성
-if [ -f requirements.txt ]; then
-  log "requirements.txt 설치"
-  pip install -r requirements.txt
-fi
-
-log "Presidio 최신 버전 설치/업그레이드"
-pip install -U "presidio-analyzer==2.2.360" "presidio-anonymizer==2.2.360"
-
-log "한국어 NLP 대안 설치 (stanza / spacy-udpipe) + 다국어 spacy 모델"
-pip install -U spacy stanza spacy-udpipe
-
-# 4) 한국어/멀티 모델 다운로드
-log "한국어 모델 다운로드 (stanza ko, spacy-udpipe ko), 다국어 spacy 소형 NER"
-python - <<'PY'
-import stanza, subprocess, sys
-# stanza ko
-stanza.download('ko', processors='tokenize,pos,lemma,ner', verbose=False)
-# spacy-udpipe ko
-subprocess.run([sys.executable, "-m", "spacy_udpipe", "download", "ko"], check=True)
-# spacy 다국어 소형 NER
-subprocess.run([sys.executable, "-m", "spacy", "download", "xx_ent_wiki_sm"], check=False)
-PY
-
-# 5) uvicorn APP_MODULE 자동 탐색 (없으면 환경변수로 지정 요망)
-if [ -z "$APP_MODULE" ]; then
-  candidates=(
-    "app.main:app"
-    "src/app/main:app"
-    "backend/main:app"
-    "main:app"
-    "server:app"
-    "api.main:app"
-  )
-  for mod in "${candidates[@]}"; do
-    if python - <<PY
-import importlib, sys
-m,a="$mod".split(":")
-try:
-    module=importlib.import_module(m)
-    assert hasattr(module,a)
-    sys.exit(0)
-except Exception:
-    sys.exit(1)
-PY
-    then APP_MODULE="$mod"; break; fi
-  done
-  if [ -z "$APP_MODULE" ]; then
-    log "⚠️ uvicorn 진입 모듈을 찾지 못했습니다. APP_MODULE='app.main:app' 형태로 지정하세요."
-    exit 2
+is_running() {
+  if [[ -f "${PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
+    if [[ -n "${pid}" ]] && ps -p "${pid}" >/dev/null 2>&1; then
+      return 0
+    fi
   fi
-fi
+  # 보조: 포트 기반 확인
+  if command -v lsof >/dev/null 2>&1 && lsof -i TCP:"${PORT}" -sTCP:LISTEN -t >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
 
-# 6) uvicorn 백그라운드 실행
-mkdir -p logs
-log "uvicorn 백그라운드 실행 → $APP_MODULE (0.0.0.0:${PORT})"
-nohup python -m uvicorn "$APP_MODULE" --host 0.0.0.0 --port "$PORT" \
-  > "logs/uvicorn_${PORT}.out" 2>&1 &
+start() {
+  mkdir -p "${LOG_DIR}"
+  if is_running; then
+    msg "이미 실행 중으로 보입니다. (포트:${PORT})"
+    status
+    return 0
+  fi
+  msg "Uvicorn 백그라운드 실행 시작"
+  nohup "${UVICORN_CMD[@]}" >"${LOG_DIR}/lineage.out" 2>&1 &
+  echo $! > "${PID_FILE}"
+  sleep 0.7
+  if is_running; then
+    msg "실행 성공: PID $(cat "${PID_FILE}") / 로그: ${LOG_DIR}/lineage.out"
+  else
+    msg "실행에 실패했습니다. 로그를 확인하세요: ${LOG_DIR}/lineage.out"
+    exit 1
+  fi
+}
 
-UVICORN_PID=$!
-echo "$UVICORN_PID" > "logs/uvicorn_${PORT}.pid"
-log "PID: $UVICORN_PID"
-log "로그: $(pwd)/logs/uvicorn_${PORT}.out"
-log "헬스체크: curl -i http://127.0.0.1:${PORT}/docs"
+stop() {
+  local stopped="false"
+  if [[ -f "${PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
+    if [[ -n "${pid}" ]] && ps -p "${pid}" >/dev/null 2>&1; then
+      msg "PID ${pid} 종료"
+      kill "${pid}" || true
+      sleep 0.5
+      if ps -p "${pid}" >/dev/null 2>&1; then
+        msg "종료 신호 후에도 살아있어 강제 종료"
+        kill -9 "${pid}" || true
+      fi
+      stopped="true"
+    fi
+    rm -f "${PID_FILE}" || true
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    local pids
+    pids="$(lsof -i TCP:"${PORT}" -sTCP:LISTEN -t 2>/dev/null || true)"
+    if [[ -n "${pids}" ]]; then
+      msg "포트 ${PORT} 점유 프로세스 종료: ${pids}"
+      kill ${pids} 2>/dev/null || true
+      sleep 0.5
+      # 남아있으면 강제
+      for p in ${pids}; do
+        if ps -p "${p}" >/dev/null 2>&1; then
+          kill -9 "${p}" 2>/dev/null || true
+        fi
+      done
+      stopped="true"
+    fi
+  fi
+
+  if [[ "${stopped}" == "true" ]]; then
+    msg "정상적으로 중지되었습니다."
+  else
+    msg "실행 중인 프로세스를 찾지 못했습니다."
+  fi
+}
+
+status() {
+  if is_running; then
+    local pid="(알 수 없음)"
+    [[ -f "${PID_FILE}" ]] && pid="$(cat "${PID_FILE}" 2>/dev/null || echo "(알 수 없음)")"
+    msg "실행 중: PID ${pid}, 포트 ${PORT}"
+  else
+    msg "정지 상태"
+  fi
+}
+
+install_and_run() {
+  need_cmd git
+  need_cmd "${PYTHON_BIN}"
+
+  # 1) 레포 가져오기/업데이트
+  if [[ -d "${REPO_DIR}/.git" ]]; then
+    msg "레포 존재: ${REPO_DIR} → 최신화(git pull)"
+    git -C "${REPO_DIR}" pull --ff-only
+  else
+    msg "레포 클론: ${REPO_URL}"
+    git clone "${REPO_URL}" "${REPO_DIR}"
+  fi
+
+  cd "${REPO_DIR}"
+
+  # 2) 가상환경
+  ensure_python_venv
+  if [[ ! -d "${VENV_DIR}" ]]; then
+    msg "가상환경 생성: ${VENV_DIR}"
+    "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+  else
+    msg "가상환경 존재: ${VENV_DIR}"
+  fi
+  activate_venv
+
+  # 3) pip 최신화 & 의존성 설치
+  msg "pip 업그레이드"
+  python -m pip install --upgrade pip wheel setuptools
+  if [[ -f "requirements.txt" ]]; then
+    msg "의존성 설치: requirements.txt"
+    python -m pip install -r requirements.txt
+  else
+    msg "requirements.txt를 찾지 못했습니다. 스킵합니다."
+  fi
+
+  # 4) 실행
+  start
+  msg "접속: http://${HOST}:${PORT}"
+}
+
+### ==========================
+### 엔트리포인트
+### ==========================
+case "${1:-run}" in
+  run)       install_and_run ;;
+  stop)      stop ;;
+  restart)   stop; start ;;
+  status)    status ;;
+  *)
+    echo "알 수 없는 명령: ${1}"
+    echo "사용법: $0 [run|stop|restart|status]"
+    exit 1
+    ;;
+esac
