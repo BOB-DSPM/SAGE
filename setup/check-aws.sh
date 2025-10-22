@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# collector_setup.sh — DSPM_Data-Collector 클론 → Steampipe 설치/실행 → Python API(uvicorn) 0.0.0.0:8000 백그라운드 기동
+# collector_setup.sh
+# DSPM_Data-Collector 클론 → AWS CLI 설치/구성 → Steampipe 설치/실행 → Python API(uvicorn) 0.0.0.0:8000 백그라운드 기동
 # 대상 OS: Ubuntu/Debian, RHEL/CentOS/Alma/Rocky, Amazon Linux, Fedora, Arch, openSUSE, macOS
 
 set -euo pipefail
@@ -11,7 +12,9 @@ TARGET_DIR="${TARGET_DIR:-DSPM_Data-Collector}"
 
 API_HOST="${HOST:-0.0.0.0}"
 API_PORT="${PORT:-8000}"
-FORCE_RESTART="${FORCE_RESTART:-1}"   # 1이면 기존 프로세스 종료 후 재시작
+FORCE_RESTART="${FORCE_RESTART:-1}"      # 1이면 기존 프로세스 종료 후 재시작
+AWS_PROFILE="${AWS_PROFILE:-default}"    # aws configure 설정 대상 프로파일
+FORCE_AWS_CONFIG="${FORCE_AWS_CONFIG:-0}"# 1이면 설정이 있어도 다시 묻고 설정
 
 ### ===== 출력 도우미 =====
 log()  { printf "\033[1;34m[i]\033[0m %s\n" "$*"; }
@@ -43,11 +46,11 @@ ensure_git() {
   if command -v git >/dev/null 2>&1; then ok "git: $(git --version)"; return; fi
   local pm; pm="$(detect_pm)"; check_net || true
   case "$pm" in
-    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git ca-certificates curl ;;
-    dnf)    $SUDO dnf install -y git ca-certificates curl ;;
-    yum)    $SUDO yum install -y git ca-certificates curl ;;
-    pacman) $SUDO pacman -Sy --noconfirm git ca-certificates curl ;;
-    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install git ca-certificates curl ;;
+    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git ca-certificates curl unzip ;;
+    dnf)    $SUDO dnf install -y git ca-certificates curl unzip ;;
+    yum)    $SUDO yum install -y git ca-certificates curl unzip ;;
+    pacman) $SUDO pacman -Sy --noconfirm git ca-certificates curl unzip ;;
+    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install git ca-certificates curl unzip ;;
     brew)   brew update; brew install git ;;
     *)      err "패키지 매니저를 인식하지 못했습니다. Git 수동 설치 필요."; exit 1 ;;
   esac
@@ -72,6 +75,111 @@ ensure_python() {
   fi
 }
 
+### ===== AWS CLI 보장 & 구성 =====
+install_awscli() {
+  check_net || true
+  local os="$(uname -s)" arch="$(uname -m)"
+  if [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    log "Homebrew로 AWS CLI 설치"
+    brew update
+    brew install awscli
+    return
+  fi
+
+  # 기본은 공식 v2 설치 스크립트 사용 (Linux)
+  local url=""
+  case "$arch" in
+    x86_64|amd64) url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" ;;
+    aarch64|arm64) url="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" ;;
+    *)
+      warn "알 수 없는 아키텍처(${arch}) → 패키지 매니저로 시도"
+      local pm; pm="$(detect_pm)"
+      case "$pm" in
+        apt)    $SUDO apt-get update -y; $SUDO apt-get install -y awscli ;; # (버전이 낮을 수 있음)
+        dnf|yum)$SUDO "$pm" install -y awscli ;;
+        pacman) $SUDO pacman -Sy --noconfirm aws-cli ;;
+        zypper) $SUDO zypper --non-interactive install aws-cli ;;
+        *)      err "AWS CLI 설치 방법을 결정하지 못했습니다."; exit 1 ;;
+      esac
+      return
+      ;;
+  esac
+
+  log "AWS CLI v2 설치 (공식 패키지)"
+  tmpd="$(mktemp -d)"
+  curl -fsSL "$url" -o "$tmpd/awscliv2.zip"
+  unzip -q "$tmpd/awscliv2.zip" -d "$tmpd"
+  if [ -n "$SUDO" ]; then
+    $SUDO "$tmpd/aws/install" --update
+  else
+    # 사용자 경로 설치
+    mkdir -p "$HOME/.local/aws-cli"
+    "$tmpd/aws/install" -i "$HOME/.local/aws-cli" -b "$HOME/.local/bin" --update || {
+      err "AWS CLI 사용자 설치 실패"; exit 1;
+    }
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
+  rm -rf "$tmpd"
+}
+
+ensure_awscli() {
+  if command -v aws >/dev/null 2>&1; then
+    ok "aws: $(aws --version 2>&1 | head -n1)"
+  else
+    log "AWS CLI 미설치 — 설치 진행"
+    install_awscli
+    command -v aws >/dev/null 2>&1 || { err "AWS CLI 설치 실패"; exit 1; }
+    ok "aws: $(aws --version 2>&1 | head -n1)"
+  fi
+}
+
+configure_aws_if_needed() {
+  local need_config="$FORCE_AWS_CONFIG"
+
+  if [ "$need_config" = "0" ]; then
+    if aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
+      ok "AWS 자격증명 유효(프로파일: $AWS_PROFILE) — aws configure 생략"
+      return 0
+    fi
+    warn "유효한 AWS 자격증명을 찾지 못했습니다(프로파일: $AWS_PROFILE). 설정을 진행합니다."
+  else
+    warn "FORCE_AWS_CONFIG=1 — aws configure를 다시 수행합니다."
+  fi
+
+  echo
+  echo "=== aws configure (${AWS_PROFILE}) ==="
+  read -rp "AWS Access Key ID: " AKID
+  # Secret은 입력 숨김
+  read -srp "AWS Secret Access Key: " SAK
+  echo
+  read -rp "Default region name [ap-northeast-2]: " REGION
+  REGION="${REGION:-ap-northeast-2}"
+  read -rp "Default output format [json]: " OUTF
+  OUTF="${OUTF:-json}"
+  # (선택) 세션 토큰
+  read -rp "AWS Session Token (엔터로 생략): " STOK || true
+
+  # 설정 반영 (history에 남지 않도록 aws configure set 사용)
+  aws configure set aws_access_key_id "$AKID" --profile "$AWS_PROFILE"
+  aws configure set aws_secret_access_key "$SAK" --profile "$AWS_PROFILE"
+  [ -n "${STOK:-}" ] && aws configure set aws_session_token "$STOK" --profile "$AWS_PROFILE" || true
+  aws configure set region "$REGION" --profile "$AWS_PROFILE"
+  aws configure set output "$OUTF" --profile "$AWS_PROFILE"
+
+  # 기본 프로파일 연결
+  if [ "$AWS_PROFILE" != "default" ]; then
+    aws configure set profile "$AWS_PROFILE" --profile default >/dev/null 2>&1 || true
+  fi
+
+  # 검증
+  if aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
+    ok "AWS 자격증명 설정 완료(프로파일: $AWS_PROFILE)"
+  else
+    err "AWS 자격증명 검증 실패 — 키/권한/네트워크를 확인하세요."
+    exit 1
+  fi
+}
+
 ### ===== Steampipe 보장 (권한/경로 자동 처리) =====
 ensure_steampipe() {
   # 사용자/홈 경로 우선 추가
@@ -85,7 +193,6 @@ ensure_steampipe() {
     # 설치 대상 경로 결정
     dest="/usr/local/bin"
     if [ -n "$SUDO" ]; then
-      # 시스템 경로 설치 (sudo 사용)
       log "Steampipe 설치 → ${dest} (sudo)"
       if curl -fsSL https://steampipe.io/install/steampipe.sh | $SUDO bash -s -- -b "$dest"; then
         :
@@ -96,7 +203,6 @@ ensure_steampipe() {
         }
       fi
     else
-      # 사용자 경로 설치 (sudo 없이)
       dest="$HOME/.local/bin"
       mkdir -p "$dest"
       log "Steampipe 설치 → ${dest} (사용자 영역)"
@@ -214,6 +320,8 @@ main() {
   check_net || true
   ensure_git
   ensure_python
+  ensure_awscli
+  configure_aws_if_needed
   ensure_steampipe
   clone_or_update
   run_api_bg
