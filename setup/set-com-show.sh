@@ -14,11 +14,11 @@
 #   TARGET_DIR="DSPM_Compliance-show"
 #   API_HOST="0.0.0.0"
 #   API_PORT="8003"
-#   REQUIREMENTS_CSV="../compliance-gorn.csv"
-#   MAPPINGS_CSV="../mapping-standard.csv"
+#   REQUIREMENTS_CSV="./compliance-gorn.csv"   # ★ 기본값을 ./ 로 변경
+#   MAPPINGS_CSV="./mapping-standard.csv"      # ★ 기본값을 ./ 로 변경
 #   SKIP_CSV_LOAD="0"            # 1로 설정 시 CSV 적재 생략
 #   FORCE_RESTART="1"            # 1이면 기존 PID 종료 후 재시작
-#   USE_PYTHON_MODULE_RUN="0"    # 1이면 `python -m app.main`으로 실행(포트 고정 코드라면 권장)
+#   USE_PYTHON_MODULE_RUN="0"    # 1이면 `python -m app.main`으로 실행
 
 set -euo pipefail
 
@@ -30,8 +30,9 @@ TARGET_DIR="${TARGET_DIR:-DSPM_Compliance-show}"
 API_HOST="${API_HOST:-0.0.0.0}"
 API_PORT="${API_PORT:-8003}"
 
-REQUIREMENTS_CSV="${REQUIREMENTS_CSV:-../compliance-gorn.csv}"
-MAPPINGS_CSV="${MAPPINGS_CSV:-../mapping-standard.csv}"
+# ★ 루트(프로젝트) 기준 기본 경로를 ./ 로 고정
+REQUIREMENTS_CSV="${REQUIREMENTS_CSV:-./compliance-gorn.csv}"
+MAPPINGS_CSV="${MAPPINGS_CSV:-./mapping-standard.csv}"
 
 SKIP_CSV_LOAD="${SKIP_CSV_LOAD:-0}"
 FORCE_RESTART="${FORCE_RESTART:-1}"
@@ -198,17 +199,61 @@ prepare_venv_and_deps() {
   ok "가상환경 및 의존성 준비 완료"
 }
 
+### ===== CSV 경로 Resolver (안전하게 탐색) =====
+# - 절대경로면 그대로 사용
+# - 상대경로면 현재 작업 디렉터리에서 확인
+# - 없으면 TARGET_DIR(프로젝트 루트)에서 파일명만으로 재시도
+resolve_csv_path() {
+  local input="$1"
+  local resolved=""
+  # 절대경로
+  if [ "${input:0:1}" = "/" ] && [ -f "$input" ]; then
+    echo "$input"; return 0
+  fi
+  # 현재 디렉터리
+  if [ -f "$input" ]; then
+    resolved="$(realpath "$input")"
+    echo "$resolved"; return 0
+  fi
+  # 프로젝트 루트에서 파일명만으로 재시도
+  local base; base="$(basename "$input")"
+  if [ -f "$base" ]; then
+    resolved="$(realpath "$base")"
+    echo "$resolved"; return 0
+  fi
+  # TARGET_DIR 기준(스크립트가 다른 디렉터리에서 실행되는 경우 방어)
+  if [ -f "${TARGET_DIR}/${base}" ]; then
+    resolved="$(realpath "${TARGET_DIR}/${base}")"
+    echo "$resolved"; return 0
+  fi
+  # 실패
+  echo "" ; return 1
+}
+
 ### ===== CSV 적재 =====
 load_csv() {
   if [ "${SKIP_CSV_LOAD}" = "1" ]; then
     warn "CSV 적재 건너뜀(SKIP_CSV_LOAD=1)"
     return 0
   fi
-  if [ ! -f "$REQUIREMENTS_CSV" ] || [ ! -f "$MAPPINGS_CSV" ]; then
-    warn "CSV 경로 확인 필요: REQUIREMENTS_CSV='${REQUIREMENTS_CSV}', MAPPINGS_CSV='${MAPPINGS_CSV}'"
+
+  # 현재 위치는 TARGET_DIR(prepare_venv_and_deps에서 cd)임.
+  local req_path map_path
+  req_path="$(resolve_csv_path "${REQUIREMENTS_CSV}")" || true
+  map_path="$(resolve_csv_path "${MAPPINGS_CSV}")" || true
+
+  if [ -z "${req_path:-}" ] || [ -z "${map_path:-}" ]; then
+    warn "CSV 파일을 찾지 못했습니다."
+    warn "찾은 경로: REQUIREMENTS_CSV='${REQUIREMENTS_CSV}' → '${req_path:-N/A}', MAPPINGS_CSV='${MAPPINGS_CSV}' → '${map_path:-N/A}'"
+    warn "프로젝트 루트에서 보이는 CSV 목록:"
+    ls -1 ../*.csv 2>/dev/null || true
+    ls -1 ./*.csv   2>/dev/null || true
+    err  "CSV 경로를 확인하거나 환경변수 REQUIREMENTS_CSV / MAPPINGS_CSV를 올바르게 설정하세요."
+    exit 1
   fi
+
   log "CSV 적재 시작"
-  python -m scripts.load_csv --requirements "${REQUIREMENTS_CSV}" --mappings "${MAPPINGS_CSV}"
+  python -m scripts.load_csv --requirements "${req_path}" --mappings "${map_path}"
   ok "✅ CSV 적재 완료"
 }
 
