@@ -45,20 +45,13 @@ ensure_packages() {
   local pm; pm="$(detect_pm)"
   check_net || true
 
-  # 각 커맨드 존재 여부 확인 후 패키지 이름 매핑
-  need_pkgs=()
+  local -a need_pkgs=()
 
-  # curl
-  command -v curl >/dev/null 2>&1 || need_pkgs+=("curl")
-  # unzip
+  command -v curl  >/dev/null 2>&1 || need_pkgs+=("curl")
   command -v unzip >/dev/null 2>&1 || need_pkgs+=("unzip")
-  # lsof
-  command -v lsof >/dev/null 2>&1 || need_pkgs+=("lsof")
-  # tar
-  command -v tar >/dev/null 2>&1 || need_pkgs+=("tar")
-  # gzip
-  command -v gzip >/dev/null 2>&1 || need_pkgs+=("gzip")
-  # ca-certificates (맥은 생략)
+  command -v lsof  >/dev/null 2>&1 || need_pkgs+=("lsof")
+  command -v tar   >/dev/null 2>&1 || need_pkgs+=("tar")
+  command -v gzip  >/dev/null 2>&1 || need_pkgs+=("gzip")
   if [ "$pm" != "brew" ]; then
     [ -f /etc/ssl/certs/ca-certificates.crt ] || need_pkgs+=("ca-certificates")
   fi
@@ -72,7 +65,6 @@ ensure_packages() {
   case "$pm" in
     apt)
       DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y
-      # tar/gzip은 기본 설치지만 누락 대비 포함
       DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y "${need_pkgs[@]}"
       ;;
     dnf|yum)
@@ -86,11 +78,10 @@ ensure_packages() {
       $SUDO zypper --non-interactive install "${need_pkgs[@]}"
       ;;
     brew)
-      # macOS: 기본적으로 curl/tar/gzip 있음. 없을 수 있는 unzip/lsof만 처리.
       for p in "${need_pkgs[@]}"; do
         case "$p" in
           unzip|lsof|curl) brew list --versions "$p" >/dev/null 2>&1 || brew install "$p" ;;
-          *) : ;; # tar/gzip/ca-certificates는 보통 불필요
+          *) : ;;
         esac
       done
       ;;
@@ -136,7 +127,7 @@ ensure_python() {
 install_awscli() {
   check_net || true
   local os="$(uname -s)" arch="$(uname -m)"
-  if [ "$os" = "Darwin" ] && command -v brew >/dev/null 2;&1; then
+  if [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
     log "Homebrew로 AWS CLI 설치"; brew update; brew install awscli; return
   fi
   local url=""
@@ -207,7 +198,9 @@ configure_aws_if_needed() {
 ### ===== Steampipe 설치/실행 =====
 ensure_steampipe() {
   export PATH="$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
-  if command -v steampipe >/dev/null 2>&1; then ok "steampipe: $(steampipe -v | head -n1)"; else
+  if command -v steampipe >/dev/null 2>&1; then
+    ok "steampipe: $(steampipe -v | head -n1)"
+  else
     check_net || true
     local dest; dest="/usr/local/bin"
     if [ -n "$SUDO" ]; then
@@ -223,7 +216,7 @@ ensure_steampipe() {
         warn "공식 스크립트 실패 → GitHub raw로 재시도(user)"
         curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash -s -- -b "$dest"
       fi
-    end
+    fi
     export PATH="$dest:$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
     command -v steampipe >/dev/null 2>&1 || { err "steampipe 설치 실패"; exit 1; }
     ok "steampipe: $(steampipe -v | head -n1)"
@@ -295,7 +288,7 @@ run_api_bg() {
 ### ===== 엔트리포인트 =====
 main() {
   check_net || true
-  ensure_packages      # <-- 필수 패키지 먼저 확보!
+  ensure_packages
   ensure_git
   ensure_python
   ensure_awscli
