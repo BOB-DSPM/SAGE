@@ -91,37 +91,75 @@ ensure_python() {
     ok "python3 설치 완료: $(python3 --version)"
   fi
 }
-
-### ===== Steampipe 보장 (유저 홈 설치 → 선택적 symlink) =====
 ensure_steampipe() {
-  # 항상 유저 홈에 설치 (공식 스크립트에 인자 없이 실행) → -b 인자 미사용!
-  export PATH="$HOME/.steampipe/bin:$HOME/.local/bin:$PATH"
+  set -euo pipefail
+  export PATH="$HOME/.local/bin:$HOME/.steampipe/bin:$PATH"
+
   if command -v steampipe >/dev/null 2>&1; then
     ok "steampipe: $(steampipe -v | head -n1)"
-  else
-    check_net || true
-    log "Steampipe 설치(사용자 홈: ~/.steampipe)"
-    if ! curl -fsSL https://raw.githubusercontent.com/turbot/steampipe/main/scripts/install.sh | bash; then
-      err "Steampipe 설치 실패"; exit 1
-    fi
-    export PATH="$HOME/.steampipe/bin:$PATH"
-    command -v steampipe >/dev/null 2>&1 || { err "steampipe PATH 반영 실패"; exit 1; }
-    ok "steampipe: $(steampipe -v | head -n1)"
-    # 로그인 쉘에 PATH 영구 반영
-    if ! grep -q '.steampipe/bin' "$HOME/.bashrc" 2>/dev/null; then
-      echo 'export PATH="$HOME/.steampipe/bin:$PATH"' >> "$HOME/.bashrc"
+    return
+  fi
+
+  check_net || true
+  log "Steampipe 수동 설치(사용자 영역: \$HOME/.local/bin)"
+
+  # 아키텍처 판별
+  local os arch pkg url tmpd bindir
+  os="$(uname -s)"
+  arch="$(uname -m)"
+  bindir="$HOME/.local/bin"
+  mkdir -p "$bindir"
+
+  case "$os" in
+    Linux)  os="linux"  ;;
+    Darwin) os="darwin" ;;
+    *) err "지원하지 않는 OS: $(uname -s)"; exit 1 ;;
+  esac
+
+  case "$arch" in
+    x86_64|amd64)   arch="amd64"  ;;
+    aarch64|arm64)  arch="arm64"  ;;
+    *) err "지원하지 않는 아키텍처: $(uname -m)"; exit 1 ;;
+  esac
+
+  pkg="steampipe_${os}_${arch}.tar.gz"
+  url="https://github.com/turbot/steampipe/releases/latest/download/${pkg}"
+
+  tmpd="$(mktemp -d)"
+  trap 'rm -rf "$tmpd"' EXIT
+
+  log "다운로드: ${url}"
+  curl -fsSL "$url" -o "$tmpd/steampipe.tgz"
+
+  log "압축 해제"
+  tar -xzf "$tmpd/steampipe.tgz" -C "$tmpd"
+
+  # steampipe 단일 바이너리 복사
+  install -m 0755 "$tmpd/steampipe" "$bindir/steampipe"
+
+  # PATH 반영
+  export PATH="$bindir:$PATH"
+  if ! command -v steampipe >/dev/null 2>&1; then
+    err "steampipe PATH 반영 실패 ($bindir 확인)"
+    exit 1
+  fi
+
+  ok "steampipe 설치 완료: $(steampipe -v | head -n1)"
+
+  # 로그인 쉘에 PATH 영구 반영
+  if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc" 2>/dev/null; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+  fi
+
+  # 선택: sudo 가능하면 전역 심볼릭 링크(편의)
+  if [ -n "${SUDO:-}" ]; then
+    if ! [ -e /usr/local/bin/steampipe ] || [ -L /usr/local/bin/steampipe ]; then
+      log "전역 링크: /usr/local/bin/steampipe → $bindir/steampipe"
+      $SUDO ln -sf "$bindir/steampipe" /usr/local/bin/steampipe || true
     fi
   fi
 
-  # 선택: sudo 가능하면 /usr/local/bin 에 심볼릭 링크(전역 실행 편의)
-  if [ -n "$SUDO" ] && [ -x "$HOME/.steampipe/bin/steampipe" ]; then
-    if [ ! -e /usr/local/bin/steampipe ] || [ ! -L /usr/local/bin/steampipe ]; then
-      log "전역 명령 연결: /usr/local/bin/steampipe → ~/.steampipe/bin/steampipe"
-      $SUDO ln -sf "$HOME/.steampipe/bin/steampipe" /usr/local/bin/steampipe || true
-    fi
-  fi
-
-  # AWS 플러그인
+  # 플러그인/서비스
   if steampipe plugin list 2>/dev/null | grep -q '^aws'; then
     ok "steampipe aws 플러그인 설치됨"
   else
@@ -129,7 +167,6 @@ ensure_steampipe() {
     steampipe plugin install aws
   fi
 
-  # 서비스 시작
   if steampipe service status 2>/dev/null | grep -qi "running"; then
     ok "steampipe service 이미 실행 중"
   else
@@ -140,6 +177,7 @@ ensure_steampipe() {
     ok "steampipe service 실행"
   fi
 }
+
 
 ### ===== 레포 클론/업데이트 =====
 clone_or_update() {
