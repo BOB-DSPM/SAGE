@@ -11,7 +11,7 @@
 #
 # 옵션(환경변수):
 #   RETRIES=2                # 실패 시 재시도 횟수
-#   FAST=0                   # 1로 설정 시, 독립 구성요소 일부 병렬 기동(collector+show)
+#   FAST=0                   # 1이면 Collector+Show 병렬 기동
 #   SKIP_AWS_CHECK=0         # 1: check-aws.sh 건너뜀
 #   SKIP_GIT_CHECK=0         # 1: check-git.sh 건너뜀
 #   SKIP_COLLECTOR=0
@@ -20,11 +20,6 @@
 #   SKIP_LINEAGE=0
 #   SKIP_ANALYZER=0
 #   SKIP_FRONT=0
-#
-# 전제:
-#   setup/ 디렉터리에 아래 파일들이 존재하고 각 스크립트는 start/stop/status/logs 지원(체크 스크립트는 인자 없음)
-#     - check-aws.sh, check-git.sh
-#     - set-collector.sh, set-com-show.sh, set-com-audit.sh, set-lineage.sh, set-analyzer.sh, set-front.sh
 
 set -euo pipefail
 
@@ -37,7 +32,6 @@ mkdir -p "${LOG_DIR}"
 RETRIES="${RETRIES:-2}"
 FAST="${FAST:-0}"
 
-# Skip 플래그 기본값
 SKIP_AWS_CHECK="${SKIP_AWS_CHECK:-0}"
 SKIP_GIT_CHECK="${SKIP_GIT_CHECK:-0}"
 SKIP_COLLECTOR="${SKIP_COLLECTOR:-0}"
@@ -97,13 +91,15 @@ check_aws() {
   run_with_retry "check-aws" bash "${SETUP_DIR}/check-aws.sh"
 }
 
-start_collector()  { [ "$SKIP_COLLECTOR" = "1" ] && { warn "collector 건너뜀"; return 0; }; need_file "${SETUP_DIR}/set-collector.sh";  run_with_retry "collector-start"  bash "${SETUP_DIR}/set-collector.sh" start; }
-start_com_show()   { [ "$SKIP_COM_SHOW" = "1" ] && { warn "com-show 건너뜀"; return 0; };  need_file "${SETUP_DIR}/set-com-show.sh";   run_with_retry "com-show-start"   bash "${SETUP_DIR}/set-com-show.sh" start; }
-start_com_audit()  { [ "$SKIP_COM_AUDIT" = "1" ] && { warn "com-audit 건너뜀"; return 0; }; need_file "${SETUP_DIR}/set-com-audit.sh";  run_with_retry "com-audit-start"  bash "${SETUP_DIR}/set-com-audit.sh" start; }
-start_lineage()    { [ "$SKIP_LINEAGE" = "1" ] && { warn "lineage 건너뜀"; return 0; };    need_file "${SETUP_DIR}/set-lineage.sh";    run_with_retry "lineage-start"    bash "${SETUP_DIR}/set-lineage.sh" start; }
-start_analyzer()   { [ "$SKIP_ANALYZER" = "1" ] && { warn "analyzer 건너뜀"; return 0; };  need_file "${SETUP_DIR}/set-analyzer.sh";   run_with_retry "analyzer-start"   bash "${SETUP_DIR}/set-analyzer.sh" start; }
-start_front()      { [ "$SKIP_FRONT" = "1" ] && { warn "front 건너뜀"; return 0; };        need_file "${SETUP_DIR}/set-front.sh";      run_with_retry "front-start"      bash "${SETUP_DIR}/set-front.sh" start; }
+# ★ 시작 시에는 인자 없이 실행 (각 set-*.sh 가 “그냥 실행하면 기동”하도록 가정)
+start_collector()  { [ "$SKIP_COLLECTOR" = "1" ] && { warn "collector 건너뜀"; return 0; }; need_file "${SETUP_DIR}/set-collector.sh";  run_with_retry "collector-run"  bash "${SETUP_DIR}/set-collector.sh"; }
+start_com_show()   { [ "$SKIP_COM_SHOW" = "1" ] && { warn "com-show 건너뜀"; return 0; };  need_file "${SETUP_DIR}/set-com-show.sh";   run_with_retry "com-show-run"   bash "${SETUP_DIR}/set-com-show.sh"; }
+start_com_audit()  { [ "$SKIP_COM_AUDIT" = "1" ] && { warn "com-audit 건너뜀"; return 0; }; need_file "${SETUP_DIR}/set-com-audit.sh";  run_with_retry "com-audit-run"  bash "${SETUP_DIR}/set-com-audit.sh"; }
+start_lineage()    { [ "$SKIP_LINEAGE" = "1" ] && { warn "lineage 건너뜀"; return 0; };    need_file "${SETUP_DIR}/set-lineage.sh";    run_with_retry "lineage-run"    bash "${SETUP_DIR}/set-lineage.sh"; }
+start_analyzer()   { [ "$SKIP_ANALYZER" = "1" ] && { warn "analyzer 건너뜀"; return 0; };  need_file "${SETUP_DIR}/set-analyzer.sh";   run_with_retry "analyzer-run"   bash "${SETUP_DIR}/set-analyzer.sh"; }
+start_front()      { [ "$SKIP_FRONT" = "1" ] && { warn "front 건너뜀"; return 0; };        need_file "${SETUP_DIR}/set-front.sh";      run_with_retry "front-run"      bash "${SETUP_DIR}/set-front.sh"; }
 
+# 정지/상태/로그는 기존 인자 유지
 stop_all() {
   for s in set-front.sh set-analyzer.sh set-lineage.sh set-com-audit.sh set-com-show.sh set-collector.sh; do
     if [ -f "${SETUP_DIR}/${s}" ]; then
@@ -142,7 +138,6 @@ do_up() {
 
   log "=== 1) 베이스 서비스 기동 (Collector, Mapping-Show) ==="
   if [ "$FAST" = "1" ]; then
-    # 독립 기동 가능 요소 병렬 처리
     start_collector & p1=$!
     start_com_show  & p2=$!
     wait $p1 || { err "collector 기동 실패"; exit 1; }
