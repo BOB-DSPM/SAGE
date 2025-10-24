@@ -166,7 +166,7 @@ do_up() {
 
   ok "모든 컴포넌트 기동 완료 🎉"
   status_all
-  log "문서 예: http://localhost:8003/docs (Compliance-show), http://localhost:8104/docs (Compliance-audit)"
+  log "문서 예: http://localhost:8003/docs (Compliance-show), http://localhost:8103/docs (Compliance-audit)"
 }
 
 ### ===== 메인 엔트리 =====

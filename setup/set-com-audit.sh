@@ -13,7 +13,7 @@
 #   BRANCH="main"
 #   TARGET_DIR="DSPM_Compliance-audit-fix"
 #   API_HOST="0.0.0.0"
-#   API_PORT="8104"                      # 기본 8104 (충돌 피하기)
+#   API_PORT="8103"                      # ★ 기본 8103 으로 고정
 #   USE_PYTHON_MODULE_RUN="0"            # 1이면 `python -m app.main`으로 실행
 #   AWS_REGION="ap-northeast-2"
 #   MAPPING_BASE_URL="http://localhost:8003"
@@ -29,7 +29,7 @@ BRANCH="${BRANCH:-main}"
 TARGET_DIR="${TARGET_DIR:-DSPM_Compliance-audit-fix}"
 
 API_HOST="${API_HOST:-0.0.0.0}"
-API_PORT="${API_PORT:-8104}"
+API_PORT="${API_PORT:-8103}"   # ★ 여기 8103
 
 USE_PYTHON_MODULE_RUN="${USE_PYTHON_MODULE_RUN:-0}"
 FORCE_RESTART="${FORCE_RESTART:-1}"
@@ -83,7 +83,7 @@ ensure_base_pkgs() {
   case "$pm" in
     apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y "${need[@]}";;
     dnf|yum)$SUDO "$pm" install -y "${need[@]}";;
-    pacman) $SUDO pacman -Sy --noconfirm "${need[@]}";;
+    pacman) $SUDO pacman -Sy --noconfirm "${need[@]}"];;
     zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install "${need[@]}";;
     brew)   for p in "${need[@]}"; do brew list --versions "$p" >/dev/null 2>&1 || brew install "$p"; done;;
     *)      warn "패키지 매니저를 인식하지 못했습니다. 수동으로 git/curl/lsof 설치가 필요할 수 있습니다.";;
@@ -109,7 +109,6 @@ ensure_python() {
 }
 
 ensure_python_venv_ready() {
-  # ensurepip/venv 확인
   if python3 -m ensurepip --version >/dev/null 2>&1 && python3 -c "import venv" >/dev/null 2>&1; then
     ok "Python venv/ensurepip 사용 가능"
     return
@@ -187,7 +186,6 @@ prepare_venv_and_deps() {
       python3 -m venv .venv
     fi
   fi
-  # shellcheck disable=SC1091
   . ".venv/bin/activate"
 
   python -m pip install --upgrade pip
@@ -195,7 +193,7 @@ prepare_venv_and_deps() {
     log "requirements 설치"
     pip install -r requirements.txt
   else
-    warn "requirements.txt 없음 → 최소 패키지 설치(fastapi, uvicorn, pydantic 등)"
+    warn "requirements.txt 없음 → 최소 패키지 설치"
     pip install fastapi uvicorn "pydantic>=2" "pydantic-settings>=2" "boto3>=1.28" "httpx>=0.27"
   fi
   ok "가상환경 및 의존성 준비 완료"
@@ -203,14 +201,8 @@ prepare_venv_and_deps() {
 
 ### ===== .env 자동 생성(없을 때만) =====
 ensure_env_file() {
-  # 현재 위치는 TARGET_DIR
-  if [ "${CREATE_ENV_IF_MISSING}" != "1" ]; then
-    return 0
-  fi
-  if [ -f ".env" ]; then
-    ok ".env 이미 존재 — 생성 건너뜀"
-    return 0
-  fi
+  if [ "${CREATE_ENV_IF_MISSING}" != "1" ]; then return 0; fi
+  if [ -f ".env" ]; then ok ".env 이미 존재 — 생성 건너뜀"; return 0; fi
   log ".env 생성"
   cat > .env <<ENV
 AWS_REGION=${AWS_REGION}
@@ -222,7 +214,6 @@ ENV
 
 ### ===== 외부 의존 API 가용성 체크(선택) =====
 check_dependencies() {
-  # 실패해도 서비스는 뜨도록 경고만 출력
   if command -v curl >/dev/null 2>&1; then
     curl -fsS "${MAPPING_BASE_URL%/}/health" >/dev/null 2>&1 && ok "Mapping API OK: ${MAPPING_BASE_URL}" || warn "Mapping API 확인 실패: ${MAPPING_BASE_URL}"
     curl -fsS "${COLLECTOR_BASE_URL%/}/health" >/dev/null 2>&1 && ok "Collector API OK: ${COLLECTOR_BASE_URL}" || warn "Collector API 확인 실패: ${COLLECTOR_BASE_URL}"
@@ -233,7 +224,6 @@ check_dependencies() {
 start_api_bg() {
   kill_port_if_needed
 
-  # 기존 PID 정리
   if [ -f "$PID_FILE" ]; then
     local old_pid; old_pid="$(cat "$PID_FILE" || true)"
     if [ -n "${old_pid:-}" ] && kill -0 "$old_pid" >/dev/null 2>&1; then
@@ -325,29 +315,9 @@ case "$cmd" in
     check_dependencies
     start_api_bg
     ;;
-  stop)
-    stop_api
-    ;;
-  restart)
-    stop_api || true
-    check_net || true
-    ensure_base_pkgs
-    ensure_python
-    ensure_python_venv_ready
-    clone_or_update
-    prepare_venv_and_deps
-    ensure_env_file
-    check_dependencies
-    start_api_bg
-    ;;
-  status)
-    status_api
-    ;;
-  logs)
-    logs_follow
-    ;;
-  *)
-    echo "Usage: $0 {start|stop|restart|status|logs}"
-    exit 1
-    ;;
+  stop)     stop_api ;;
+  restart)  stop_api || true; check_net || true; ensure_base_pkgs; ensure_python; ensure_python_venv_ready; clone_or_update; prepare_venv_and_deps; ensure_env_file; check_dependencies; start_api_bg ;;
+  status)   status_api ;;
+  logs)     logs_follow ;;
+  *)        echo "Usage: $0 {start|stop|restart|status|logs}"; exit 1 ;;
 esac
