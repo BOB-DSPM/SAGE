@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# setup.sh — Git 확인/설치 → SAGE-FRONT 클론/업데이트 → dspm_dashboard 백그라운드 실행/관리
-# 대상 OS: Ubuntu/Debian, RHEL/CentOS/Alma/Rocky, Amazon Linux, Fedora, Arch, openSUSE, macOS, Windows(WSL/Chocolatey)
-#
+# set-front.sh — Git 확인/설치 → SAGE-FRONT 클론/업데이트 → dspm_dashboard 백그라운드 실행/관리
 # 사용법:
-#   bash setup.sh start     # 설치/업데이트 후 백그라운드 실행
-#   bash setup.sh stop      # 백그라운드 중지
-#   bash setup.sh restart   # 중지 후 재시작
-#   bash setup.sh status    # 상태 확인
-#   bash setup.sh logs      # 최근 로그 tail
+#   bash set-front.sh start     # 설치/업데이트 후 백그라운드 실행
+#   bash set-front.sh stop      # 백그라운드 중지
+#   bash set-front.sh restart   # 중지 후 재시작
+#   bash set-front.sh status    # 상태 확인
+#   bash set-front.sh logs      # 최근 로그 tail
 #
 # 환경변수(선택):
 #   REPO_URL=https://github.com/BOB-DSPM/SAGE-FRONT.git
@@ -17,9 +15,9 @@
 #   APP_SUBDIR=dspm_dashboard
 #   HOST=0.0.0.0
 #   PORT=8200
-#   NODE_LTS=lts/*           # 특정 버전 고정 시 20 또는 22 등
+#   NODE_LTS=lts/*           # 특정 버전 고정 시 20/22 등
 #   FORCE_RESTART=0          # 1이면 기존 프로세스 종료 후 재시작
-#   RUN_CMD="npm start"      # 필요 시 커스텀 실행 커맨드 지정
+#   RUN_CMD="npm start"      # 필요 시 커스텀 실행 커맨드
 
 set -Eeuo pipefail
 
@@ -52,21 +50,13 @@ detect_pm() {
   if command -v apt-get >/dev/null 2>&1; then echo "apt"; return; fi
   if command -v dnf      >/dev/null 2>&1; then echo "dnf"; return; fi
   if command -v yum      >/dev/null 2>&1; then echo "yum"; return; fi
-  if command -v pacman   >/dev/null 2>&1; then echo "pacman"; return; fi
+  if command -v pacman   >/dev/null 2;&1; then echo "pacman"; return; fi
   if command -v zypper   >/dev/null 2>&1; then echo "zypper"; return; fi
   if command -v brew     >/dev/null 2>&1; then echo "brew"; return; fi
   if command -v choco    >/dev/null 2>&1; then echo "choco"; return; fi
   echo "unknown"
 }
 
-check_network() {
-  if ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 || curl -s --max-time 3 https://github.com >/dev/null 2>&1; then
-    return 0
-  fi
-  warn "네트워크 연결이 불안정합니다. 설치/클론이 실패할 수 있습니다."
-}
-
-### =============== 필수 도구 설치 ===============
 install_pkg() {
   local pm="$1"; shift
   case "$pm" in
@@ -84,39 +74,24 @@ install_pkg() {
 ensure_basic_tools() {
   local pm; pm="$(detect_pm)"
   case "$pm" in
-    apt)
-      install_pkg apt ca-certificates curl git lsof netcat-openbsd >/dev/null 2>&1 || true
-      ;;
-    dnf|yum)
-      install_pkg "$pm" ca-certificates curl git lsof nmap-ncat >/dev/null 2>&1 || true
-      ;;
-    pacman)
-      install_pkg pacman ca-certificates curl git lsof ncat >/dev/null 2>&1 || true
-      ;;
-    zypper)
-      install_pkg zypper ca-certificates curl git lsof nmap >/dev/null 2>&1 || true
-      ;;
-    brew)
-      install_pkg brew ca-certificates curl git lsof nmap >/dev/null 2>&1 || true
-      ;;
-    choco)
-      install_pkg choco git curl nmap >/dev/null 2>&1 || true
-      ;;
+    apt)    install_pkg apt ca-certificates curl git lsof netcat-openbsd >/dev/null 2>&1 || true ;;
+    dnf|yum)install_pkg "$pm" ca-certificates curl git lsof nmap-ncat     >/dev/null 2>&1 || true ;;
+    pacman) install_pkg pacman ca-certificates curl git lsof ncat        >/dev/null 2>&1 || true ;;
+    zypper) install_pkg zypper ca-certificates curl git lsof nmap        >/dev/null 2>&1 || true ;;
+    brew)   install_pkg brew ca-certificates curl git lsof nmap          >/dev/null 2>&1 || true ;;
+    choco)  install_pkg choco git curl nmap                              >/dev/null 2>&1 || true ;;
   esac
   command -v git  >/dev/null 2>&1 || { err "git 설치 실패"; exit 1; }
   command -v curl >/dev/null 2>&1 || { err "curl 설치 실패"; exit 1; }
 }
 
-### =============== Git 설정 ===============
 ensure_git() {
   ensure_basic_tools
   ok "git: $(git --version)"
   git config --global http.version HTTP/1.1 || true
 }
 
-### =============== Node.js 설치 보장 (nvm 우선) ===============
 install_nvm_and_node() {
-  check_network || true
   if [ ! -d "${HOME}/.nvm" ]; then
     log "nvm 설치"
     curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
@@ -131,17 +106,10 @@ install_nvm_and_node() {
 }
 
 ensure_node() {
-  if command -v node >/dev/null 2>&1 && command -v npm >/dev-null 2>&1; then
-    :
-  elif command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    :
-  else
-    warn "Node.js/npm 미설치 — nvm 경유 설치 진행"
-  fi
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    warn "Node.js/npm 미설치 — nvm 경유 설치 진행"
     install_nvm_and_node
   fi
-  # 버전 확인 및 낮으면 업데이트
   local major; major="$(node -v | sed 's/^v//;s/\..*$//')"
   if [ "${major:-0}" -lt 18 ]; then
     warn "Node 버전이 낮음($(node -v)) → 최신 LTS로 업데이트"
@@ -151,7 +119,6 @@ ensure_node() {
   npm config set audit false >/dev/null 2>&1 || true
 }
 
-### =============== 레포 클론/업데이트 ===============
 clone_or_update() {
   if [ -d "$TARGET_DIR/.git" ]; then
     log "기존 레포 감지: $TARGET_DIR → 동기화"
@@ -184,22 +151,62 @@ clone_or_update() {
   fi
 }
 
-### =============== 앱 설치/빌드 보정 ===============
-ensure_app_deps() {
-  local app_dir="$1"
-  pushd "$app_dir" >/dev/null
+### 절대 경로 유틸
+app_dir() { (cd "${TARGET_DIR}/${APP_SUBDIR}" 2>/dev/null && pwd) || printf "%s" "${TARGET_DIR}/${APP_SUBDIR}"; }
+pid_file() { printf "%s/.pid" "$(app_dir)"; }
+log_dir()  { printf "%s/logs" "$(app_dir)"; }
 
-  # 잠재 빌드 오류 보정: html-webpack-plugin/webpack 미존재 시 보강 설치
-  if [ ! -d "node_modules" ]; then
-    :
-  else
+### Webpack 레거시 패치
+patch_webpack_legacy() {
+  local dir="$1"
+  pushd "$dir" >/dev/null
+
+  # 1) html-webpack-plugin 로더 경로 하드코딩 제거
+  if grep -R "html-webpack-plugin/lib/loader\.js" -n . >/dev/null 2>&1; then
+    warn "레거시 html-webpack-plugin 로더 경로 패치"
+    sed -i -E 's@!?html-webpack-plugin/lib/loader\.js!?@@g' webpack*.js 2>/dev/null || true
+    sed -i -E 's@!?html-webpack-plugin/lib/loader\.js!?@@g' config/webpack*.js 2>/dev/null || true
+    sed -i -E "s@require\.resolve\(['\"][^)]*html-webpack-plugin/lib/loader\.js['\"]\)!!@@g" webpack*.js config/webpack*.js 2>/dev/null || true
+  fi
+
+  # 2) 플러그인/웹팩 보강 설치
+  if ! node -e "require('html-webpack-plugin')" >/dev/null 2>&1; then
+    npm i -D html-webpack-plugin@^5 --no-fund --no-audit || true
+  fi
+  if ! node -e "require('webpack')" >/dev/null 2>&1; then
+    npm i -D webpack webpack-cli --no-fund --no-audit || true
+  fi
+
+  # 3) 템플릿 위치 보정
+  if [ ! -f "public/index.html" ]; then
+    mkdir -p public
+    if [ -f "src/index.html" ]; then
+      cp -n src/index.html public/index.html
+    elif [ -f "index.html" ]; then
+      cp -n index.html public/index.html
+    else
+      cat > public/index.html <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>SAGE Front</title></head><body><div id="root"></div></body></html>
+EOF
+    fi
+  fi
+
+  popd >/dev/null
+}
+
+ensure_app_deps() {
+  local app_dir_abs="$1"
+  pushd "$app_dir_abs" >/dev/null
+
+  # 잠재 빌드 오류 보강
+  if [ -d "node_modules" ]; then
     if [ ! -d "node_modules/html-webpack-plugin" ] || [ ! -d "node_modules/webpack" ]; then
-      warn "webpack/html-webpack-plugin 확인 필요 → 보강 설치 시도"
+      warn "webpack/html-webpack-plugin 보강 설치"
       npm i -D webpack webpack-cli html-webpack-plugin@^5 --no-fund --no-audit || true
     fi
   fi
 
-  # 패키지 설치 (lock 파일 우선)
+  # 패키지 설치: lock 우선
   if [ -f "pnpm-lock.yaml" ]; then
     command -v pnpm >/dev/null 2>&1 || npm i -g pnpm >/dev/null 2>&1 || true
     log "pnpm i"
@@ -216,14 +223,13 @@ ensure_app_deps() {
     npm install
   fi
 
+  # 레거시 Webpack 설정 패치
+  patch_webpack_legacy "$app_dir_abs"
+
   popd >/dev/null
 }
 
-### =============== 프로세스/네트워크 관리 ===============
-app_dir() { echo "${TARGET_DIR}/${APP_SUBDIR}"; }
-pid_file() { echo "$(app_dir)/.pid"; }
-log_dir() { echo "$(app_dir)/logs"; }
-
+### 네트워크/프로세스
 is_listening() {
   local port="$1"
   if command -v nc >/dev/null 2>&1; then
@@ -263,7 +269,7 @@ stop_if_running() {
   fi
 }
 
-### =============== 실행/중지/상태/로그 ===============
+### 실행/중지/상태/로그
 start_app() {
   ensure_git
   clone_or_update
@@ -271,7 +277,10 @@ start_app() {
 
   local dir; dir="$(app_dir)"
   [ -d "$dir" ] || { err "앱 디렉터리 없음: ${dir}"; exit 1; }
-  mkdir -p "$(log_dir)"
+
+  local abs_dir; abs_dir="$(cd "$dir" && pwd)"
+  local abs_log_dir; abs_log_dir="${abs_dir}/logs"
+  mkdir -p "$abs_log_dir"
 
   # 기존 실행 항목 정리
   if [ -f "$(pid_file)" ]; then
@@ -288,16 +297,15 @@ start_app() {
     fi
   fi
 
-  ensure_app_deps "$dir"
+  ensure_app_deps "$abs_dir"
 
-  # 로그 파일명
   local ts logfile
   ts="$(date +%Y%m%d-%H%M%S)"
-  logfile="$(log_dir)/dashboard-${ts}.log"
+  logfile="${abs_log_dir}/dashboard-${ts}.log"
 
   ok "대시보드 백그라운드 시작: HOST=${APP_HOST} PORT=${APP_PORT}"
-  ( cd "$dir"
-    # 환경변수 주입 후 실행 (nohup + 백그라운드)
+  (
+    cd "$abs_dir"
     HOST="${APP_HOST}" PORT="${APP_PORT}" nohup bash -lc "$RUN_CMD" >"${logfile}" 2>&1 &
     echo $! > .pid
   )
@@ -308,7 +316,7 @@ start_app() {
     ok "포트 ${APP_PORT} 응답 확인"
   else
     warn "포트 ${APP_PORT} 응답 없음 — 빌드/의존성 로그 확인 필요"
-    log "최근 로그 확인: tail -n 200 \"${logfile}\""
+    log "최근 로그 확인: tail -n 200 \"${logfile}\" || tail -n 200 \"${abs_dir}/nohup.out\""
   fi
 }
 
@@ -341,17 +349,18 @@ status_app() {
 logs_app() {
   local dir; dir="$(app_dir)"
   [ -d "$dir" ] || { err "앱 디렉터리 없음: ${dir}"; exit 1; }
+  local abs_dir; abs_dir="$(cd "$dir" && pwd)"
   local lastlog
-  lastlog="$(ls -1t "$(log_dir)"/dashboard-*.log 2>/dev/null | head -n1 || true)"
+  lastlog="$(ls -1t "${abs_dir}/logs"/dashboard-*.log 2>/dev/null | head -n1 || true)"
   if [ -n "$lastlog" ] && [ -f "$lastlog" ]; then
     log "tail -f $lastlog"
     tail -f "$lastlog"
   else
-    warn "로그 파일이 없습니다."
+    warn "로그 파일이 없습니다. (대안) tail -f \"${abs_dir}/nohup.out\""
   fi
 }
 
-### =============== 엔트리포인트 ===============
+### 엔트리포인트
 cmd="${1:-start}"
 case "$cmd" in
   start)   start_app ;;
