@@ -50,8 +50,7 @@ detect_pm() {
   if command -v apt-get >/dev/null 2>&1; then echo "apt"; return; fi
   if command -v dnf      >/dev/null 2>&1; then echo "dnf"; return; fi
   if command -v yum      >/dev/null 2>&1; then echo "yum"; return; fi
-  if command -v pacman   >/dev/null 2;&1; then echo "pacman"; return; fi
-  if command -v zypper   >/dev/null 2>&1; then echo "zypper"; return; fi
+  if command -v pacman   >/dev/null 2>&1; then echo "pacman"; return; fi  if command -v zypper   >/dev/null 2>&1; then echo "zypper"; return; fi
   if command -v brew     >/dev/null 2>&1; then echo "brew"; return; fi
   if command -v choco    >/dev/null 2>&1; then echo "choco"; return; fi
   echo "unknown"
