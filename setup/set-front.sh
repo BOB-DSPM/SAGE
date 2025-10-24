@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
-# setup.sh — Git 확인/설치 → SAGE-FRONT 클론/업데이트 → dspm_dashboard 백그라운드 실행
+# setup.sh — Git 확인/설치 → SAGE-FRONT 클론/업데이트 → dspm_dashboard 백그라운드 실행/관리
 # 대상 OS: Ubuntu/Debian, RHEL/CentOS/Alma/Rocky, Amazon Linux, Fedora, Arch, openSUSE, macOS, Windows(WSL/Chocolatey)
+#
+# 사용법:
+#   bash setup.sh start     # 설치/업데이트 후 백그라운드 실행
+#   bash setup.sh stop      # 백그라운드 중지
+#   bash setup.sh restart   # 중지 후 재시작
+#   bash setup.sh status    # 상태 확인
+#   bash setup.sh logs      # 최근 로그 tail
+#
+# 환경변수(선택):
+#   REPO_URL=https://github.com/BOB-DSPM/SAGE-FRONT.git
+#   BRANCH=main
+#   TARGET_DIR=SAGE-FRONT
+#   CLONE_DEPTH=1
+#   APP_SUBDIR=dspm_dashboard
+#   HOST=0.0.0.0
+#   PORT=8200
+#   NODE_LTS=lts/*           # 특정 버전 고정 시 20 또는 22 등
+#   FORCE_RESTART=0          # 1이면 기존 프로세스 종료 후 재시작
+#   RUN_CMD="npm start"      # 필요 시 커스텀 실행 커맨드 지정
 
-set -euo pipefail
+set -Eeuo pipefail
 
 ### =============== 설정 ===============
 REPO_URL="${REPO_URL:-https://github.com/BOB-DSPM/SAGE-FRONT.git}"
@@ -10,11 +29,12 @@ BRANCH="${BRANCH:-main}"
 TARGET_DIR="${TARGET_DIR:-SAGE-FRONT}"
 CLONE_DEPTH="${CLONE_DEPTH:-1}"
 
-APP_SUBDIR="dspm_dashboard"
+APP_SUBDIR="${APP_SUBDIR:-dspm_dashboard}"
 APP_HOST="${HOST:-0.0.0.0}"
 APP_PORT="${PORT:-8200}"
-NODE_LTS="${NODE_LTS:-lts/*}"     # 특정 버전 고정 시 22 등의 숫자로 교체
-FORCE_RESTART="${FORCE_RESTART:-0}" # 1이면 기존 프로세스 종료 후 재시작
+NODE_LTS="${NODE_LTS:-lts/*}"
+FORCE_RESTART="${FORCE_RESTART:-0}"
+RUN_CMD="${RUN_CMD:-npm start}"
 
 ### =============== 출력 도우미 ===============
 log()   { printf "\033[1;34m[i]\033[0m %s\n" "$*"; }
@@ -46,31 +66,51 @@ check_network() {
   warn "네트워크 연결이 불안정합니다. 설치/클론이 실패할 수 있습니다."
 }
 
-### =============== Git 설치 보장 ===============
-install_git() {
-  local pm; pm="$(detect_pm)"
-  check_network || true
+### =============== 필수 도구 설치 ===============
+install_pkg() {
+  local pm="$1"; shift
   case "$pm" in
-    apt)    log "apt로 git 설치"; DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git ca-certificates curl ;;
-    dnf)    log "dnf로 git 설치"; $SUDO dnf install -y git ca-certificates curl ;;
-    yum)    log "yum로 git 설치"; $SUDO yum install -y git ca-certificates curl ;;
-    pacman) log "pacman으로 git 설치"; $SUDO pacman -Sy --noconfirm git ca-certificates curl ;;
-    zypper) log "zypper로 git 설치"; $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install git ca-certificates curl ;;
-    brew)   log "Homebrew로 git 설치"; brew update; brew install git ;;
-    choco)  log "Chocolatey로 git 설치"; choco install git -y ;;
-    *)      err "지원되지 않는 OS입니다. Git 수동 설치 필요: https://git-scm.com/downloads"; exit 1 ;;
+    apt)    DEBIAN_FRONTEND=noninteractive $SUDO apt-get update -y; DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y "$@";;
+    dnf)    $SUDO dnf install -y "$@";;
+    yum)    $SUDO yum install -y "$@";;
+    pacman) $SUDO pacman -Sy --noconfirm "$@";;
+    zypper) $SUDO zypper --non-interactive refresh; $SUDO zypper --non-interactive install "$@";;
+    brew)   brew update; brew install "$@";;
+    choco)  choco install -y "$@";;
+    *)      return 1;;
   esac
 }
 
+ensure_basic_tools() {
+  local pm; pm="$(detect_pm)"
+  case "$pm" in
+    apt)
+      install_pkg apt ca-certificates curl git lsof netcat-openbsd >/dev/null 2>&1 || true
+      ;;
+    dnf|yum)
+      install_pkg "$pm" ca-certificates curl git lsof nmap-ncat >/dev/null 2>&1 || true
+      ;;
+    pacman)
+      install_pkg pacman ca-certificates curl git lsof ncat >/dev/null 2>&1 || true
+      ;;
+    zypper)
+      install_pkg zypper ca-certificates curl git lsof nmap >/dev/null 2>&1 || true
+      ;;
+    brew)
+      install_pkg brew ca-certificates curl git lsof nmap >/dev/null 2>&1 || true
+      ;;
+    choco)
+      install_pkg choco git curl nmap >/dev/null 2>&1 || true
+      ;;
+  esac
+  command -v git  >/dev/null 2>&1 || { err "git 설치 실패"; exit 1; }
+  command -v curl >/dev/null 2>&1 || { err "curl 설치 실패"; exit 1; }
+}
+
+### =============== Git 설정 ===============
 ensure_git() {
-  if command -v git >/dev/null 2>&1; then
-    ok "git 이미 설치됨: $(git --version)"
-  else
-    warn "git 미설치 — 설치를 시작합니다."
-    install_git
-    command -v git >/dev/null 2>&1 || { err "git 설치 실패"; exit 1; }
-    ok "git 설치 완료: $(git --version)"
-  fi
+  ensure_basic_tools
+  ok "git: $(git --version)"
   git config --global http.version HTTP/1.1 || true
 }
 
@@ -83,7 +123,7 @@ install_nvm_and_node() {
   fi
   # shellcheck disable=SC1090
   . "${HOME}/.nvm/nvm.sh"
-  log "Node.js(${NODE_LTS}) 설치"
+  log "Node.js(${NODE_LTS}) 설치/사용"
   nvm install "${NODE_LTS}"
   nvm alias default "${NODE_LTS}"
   nvm use default
@@ -91,16 +131,20 @@ install_nvm_and_node() {
 }
 
 ensure_node() {
-  if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    major="$(node -v | sed 's/^v//;s/\..*$//')"
-    if [ "${major:-0}" -lt 18 ]; then
-      warn "Node 버전이 낮음($(node -v)) → 최신 LTS로 업데이트"
-      install_nvm_and_node
-    else
-      ok "Node 존재: $(node -v), npm: $(npm -v)"
-    fi
+  if command -v node >/dev/null 2>&1 && command -v npm >/dev-null 2>&1; then
+    :
+  elif command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    :
   else
     warn "Node.js/npm 미설치 — nvm 경유 설치 진행"
+  fi
+  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    install_nvm_and_node
+  fi
+  # 버전 확인 및 낮으면 업데이트
+  local major; major="$(node -v | sed 's/^v//;s/\..*$//')"
+  if [ "${major:-0}" -lt 18 ]; then
+    warn "Node 버전이 낮음($(node -v)) → 최신 LTS로 업데이트"
     install_nvm_and_node
   fi
   npm config set fund false >/dev/null 2>&1 || true
@@ -112,7 +156,7 @@ clone_or_update() {
   if [ -d "$TARGET_DIR/.git" ]; then
     log "기존 레포 감지: $TARGET_DIR → 동기화"
     pushd "$TARGET_DIR" >/dev/null
-    current_url="$(git config --get remote.origin.url || true)"
+    local current_url; current_url="$(git config --get remote.origin.url || true)"
     if [ "$current_url" != "$REPO_URL" ]; then
       warn "원격 변경: $current_url → $REPO_URL"; git remote set-url origin "$REPO_URL"
     fi
@@ -123,7 +167,7 @@ clone_or_update() {
     ok "레포 업데이트 완료"
   else
     if [ -e "$TARGET_DIR" ] && [ ! -d "$TARGET_DIR/.git" ]; then
-      ts="$(date +%Y%m%d-%H%M%S)"; bak="${TARGET_DIR}.bak-${ts}"
+      local ts bak; ts="$(date +%Y%m%d-%H%M%S)"; bak="${TARGET_DIR}.bak-${ts}"
       warn "동명 디렉터리(깃 아님) → 백업: $bak"; mv "$TARGET_DIR" "$bak"
     fi
     if [ -n "${CLONE_DEPTH}" ] && [ "${CLONE_DEPTH}" != "0" ]; then
@@ -140,64 +184,184 @@ clone_or_update() {
   fi
 }
 
-### =============== 앱 설치/백그라운드 실행 ===============
-run_dashboard_bg() {
-  local app_dir="${TARGET_DIR}/${APP_SUBDIR}"
-  [ -d "$app_dir" ] || { err "앱 디렉터리 없음: ${app_dir}"; exit 1; }
+### =============== 앱 설치/빌드 보정 ===============
+ensure_app_deps() {
+  local app_dir="$1"
+  pushd "$app_dir" >/dev/null
 
-  cd "$app_dir"
-  mkdir -p logs
+  # 잠재 빌드 오류 보정: html-webpack-plugin/webpack 미존재 시 보강 설치
+  if [ ! -d "node_modules" ]; then
+    :
+  else
+    if [ ! -d "node_modules/html-webpack-plugin" ] || [ ! -d "node_modules/webpack" ]; then
+      warn "webpack/html-webpack-plugin 확인 필요 → 보강 설치 시도"
+      npm i -D webpack webpack-cli html-webpack-plugin@^5 --no-fund --no-audit || true
+    fi
+  fi
 
-  # 이미 실행 중인지 확인
-  if [ -f ".pid" ]; then
-    old_pid="$(cat .pid || true)"
+  # 패키지 설치 (lock 파일 우선)
+  if [ -f "pnpm-lock.yaml" ]; then
+    command -v pnpm >/dev/null 2>&1 || npm i -g pnpm >/dev/null 2>&1 || true
+    log "pnpm i"
+    pnpm i
+  elif [ -f "yarn.lock" ]; then
+    command -v yarn >/dev/null 2>&1 || npm i -g yarn >/dev/null 2>&1 || true
+    log "yarn install --frozen-lockfile (fallback: yarn install)"
+    yarn install --frozen-lockfile || yarn install
+  elif [ -f "package-lock.json" ]; then
+    log "npm ci"
+    npm ci
+  else
+    log "npm install"
+    npm install
+  fi
+
+  popd >/dev/null
+}
+
+### =============== 프로세스/네트워크 관리 ===============
+app_dir() { echo "${TARGET_DIR}/${APP_SUBDIR}"; }
+pid_file() { echo "$(app_dir)/.pid"; }
+log_dir() { echo "$(app_dir)/logs"; }
+
+is_listening() {
+  local port="$1"
+  if command -v nc >/dev/null 2>&1; then
+    nc -z 127.0.0.1 "$port" >/dev/null 2>&1
+  elif command -v ncat >/dev/null 2>&1; then
+    ncat -z 127.0.0.1 "$port" >/dev/null 2>&1
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
+
+wait_until_up() {
+  local port="$1" timeout="${2:-30}" i=0
+  while [ "$i" -lt "$timeout" ]; do
+    if is_listening "$port"; then return 0; fi
+    sleep 1; i=$((i+1))
+  done
+  return 1
+}
+
+stop_if_running() {
+  local pf; pf="$(pid_file)"
+  if [ -f "$pf" ]; then
+    local old_pid; old_pid="$(cat "$pf" 2>/dev/null || true)"
+    if [ -n "${old_pid:-}" ] && kill -0 "$old_pid" >/dev/null 2>&1; then
+      log "기존 프로세스 종료(PID=$old_pid)"
+      kill "$old_pid" || true
+      sleep 1
+      if kill -0 "$old_pid" >/dev/null 2>&1; then
+        warn "강제 종료 시도"
+        kill -9 "$old_pid" || true
+      fi
+    fi
+    rm -f "$pf"
+  fi
+}
+
+### =============== 실행/중지/상태/로그 ===============
+start_app() {
+  ensure_git
+  clone_or_update
+  ensure_node
+
+  local dir; dir="$(app_dir)"
+  [ -d "$dir" ] || { err "앱 디렉터리 없음: ${dir}"; exit 1; }
+  mkdir -p "$(log_dir)"
+
+  # 기존 실행 항목 정리
+  if [ -f "$(pid_file)" ]; then
+    local old_pid; old_pid="$(cat "$(pid_file)" 2>/dev/null || true)"
     if [ -n "${old_pid:-}" ] && kill -0 "$old_pid" >/dev/null 2>&1; then
       if [ "$FORCE_RESTART" = "1" ]; then
         warn "기존 프로세스(${old_pid}) 종료 후 재시작(FORCE_RESTART=1)"
-        kill "$old_pid" || true
-        sleep 1
+        stop_if_running
       else
         ok "이미 실행 중입니다. PID=${old_pid}"
-        log "포트 ${APP_PORT} 점유 여부를 확인하세요."
+        log "포트 ${APP_PORT} 점유 여부 확인 필요 → status / logs 참고"
         return 0
       fi
     fi
   fi
 
-  # 의존성 설치
-  if [ -f package-lock.json ]; then
-    log "npm ci 실행"; npm ci
-  else
-    log "npm install 실행"; npm install
-  fi
-
-  # 포트 사용 여부 안내
-  if command -v lsof >/dev/null 2>&1 && lsof -iTCP:"${APP_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "PORT ${APP_PORT} 사용 중인 프로세스가 있습니다."
-  fi
+  ensure_app_deps "$dir"
 
   # 로그 파일명
+  local ts logfile
   ts="$(date +%Y%m%d-%H%M%S)"
-  logfile="logs/dashboard-${ts}.log"
+  logfile="$(log_dir)/dashboard-${ts}.log"
 
   ok "대시보드 백그라운드 시작: HOST=${APP_HOST} PORT=${APP_PORT}"
-  # 백그라운드 실행 (&) + nohup로 터미널 분리, 로그 파일 저장
-  HOST="${APP_HOST}" PORT="${APP_PORT}" nohup npm start >"${logfile}" 2>&1 &
+  ( cd "$dir"
+    # 환경변수 주입 후 실행 (nohup + 백그라운드)
+    HOST="${APP_HOST}" PORT="${APP_PORT}" nohup bash -lc "$RUN_CMD" >"${logfile}" 2>&1 &
+    echo $! > .pid
+  )
 
-  pid="$!"
-  echo "${pid}" > .pid
-
+  local pid; pid="$(cat "$(pid_file)")"
   ok "PID=${pid} (로그: ${logfile})"
-  log "최근 로그 확인: tail -f \"${logfile}\""
-  log "중지: kill \$(cat .pid)"
+  if wait_until_up "${APP_PORT}" 30; then
+    ok "포트 ${APP_PORT} 응답 확인"
+  else
+    warn "포트 ${APP_PORT} 응답 없음 — 빌드/의존성 로그 확인 필요"
+    log "최근 로그 확인: tail -n 200 \"${logfile}\""
+  fi
+}
+
+stop_app() {
+  local dir; dir="$(app_dir)"
+  [ -d "$dir" ] || { warn "앱 디렉터리 없음: ${dir}"; return 0; }
+  stop_if_running
+  ok "중지 완료"
+}
+
+status_app() {
+  local pf; pf="$(pid_file)"
+  if [ -f "$pf" ]; then
+    local pid; pid="$(cat "$pf" 2>/dev/null || true)"
+    if [ -n "${pid:-}" ] && kill -0 "$pid" >/dev/null 2>&1; then
+      ok "실행 중(PID=$pid)"
+    else
+      warn "PID 파일은 있으나 프로세스 없음"
+    fi
+  else
+    warn "실행 중 아님"
+  fi
+  if is_listening "$APP_PORT"; then
+    ok "포트 ${APP_PORT} LISTEN 중"
+  else
+    warn "포트 ${APP_PORT} 비활성"
+  fi
+}
+
+logs_app() {
+  local dir; dir="$(app_dir)"
+  [ -d "$dir" ] || { err "앱 디렉터리 없음: ${dir}"; exit 1; }
+  local lastlog
+  lastlog="$(ls -1t "$(log_dir)"/dashboard-*.log 2>/dev/null | head -n1 || true)"
+  if [ -n "$lastlog" ] && [ -f "$lastlog" ]; then
+    log "tail -f $lastlog"
+    tail -f "$lastlog"
+  else
+    warn "로그 파일이 없습니다."
+  fi
 }
 
 ### =============== 엔트리포인트 ===============
-main() {
-  ensure_git
-  clone_or_update
-  ensure_node
-  run_dashboard_bg
-}
-
-main "$@"
+cmd="${1:-start}"
+case "$cmd" in
+  start)   start_app ;;
+  stop)    stop_app ;;
+  restart) stop_app; start_app ;;
+  status)  status_app ;;
+  logs)    logs_app ;;
+  *)
+    err "알 수 없는 명령: $cmd
+사용법: $0 {start|stop|restart|status|logs}"
+    exit 1
+    ;;
+esac
