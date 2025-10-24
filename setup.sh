@@ -172,24 +172,10 @@ do_up() {
 ### ===== 메인 엔트리 =====
 cmd="${1:-up}"
 case "$cmd" in
-  up)
-    do_up
-    ;;
-  restart)
-    stop_all
-    do_up
-    ;;
-  stop)
-    stop_all
-    ;;
-  status)
-    status_all
-    ;;
-  logs)
-    logs_all
-    ;;
-  *)
-    echo "Usage: $0 {up|restart|stop|status|logs}"
-    exit 1
-    ;;
+  up)       do_up ;;
+  restart)  stop_all; do_up ;;
+  stop)     stop_all ;;
+  status)   status_all ;;
+  logs)     logs_all ;;
+  *) echo "Usage: $0 {up|restart|stop|status|logs}"; exit 1 ;;
 esac
