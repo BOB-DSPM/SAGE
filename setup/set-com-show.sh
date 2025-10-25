@@ -16,6 +16,6 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-python -m scripts.load_csv --requirements ../compliance-gorn.csv --mappings ../mapping-standard.csv
+python -m scripts.load_csv --requirements ./compliance-gorn.csv --mappings ./mapping-standard.csv
 
 nohup python -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
