@@ -1,3 +1,4 @@
+set -e
 PID=$(lsof -ti tcp:8200)
 
 if [ -n "$PID" ]; then

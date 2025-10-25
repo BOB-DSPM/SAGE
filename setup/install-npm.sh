@@ -1,2 +1,3 @@
-sudo apt update
-sudo apt install nodejs npm
+set -e
+sudo apt update -y
+sudo apt install nodejs npm -y
