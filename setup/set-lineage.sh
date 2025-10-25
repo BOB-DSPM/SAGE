@@ -16,4 +16,4 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-python -m uvicorn api:app --reload --port 8300 --host 0.0.0.0
+nohup python -m uvicorn api:app --host 0.0.0.0 --port 8300 > lineage.log 2>&1 & echo $! > lineage.pid
