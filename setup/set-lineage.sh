@@ -16,4 +16,4 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-python -m uvicorn api:app --reload --port 8300
+python -m uvicorn api:app --reload --port 8300 --host 0.0.0.0
