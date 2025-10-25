@@ -1,3 +1,3 @@
 sudo chmod +x ./*
-./setup/install-npm.sh
-./setup/set-front.sh
+sudo ./setup/install-npm.sh
+sudo ./setup/set-front.sh
