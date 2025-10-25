@@ -7,3 +7,4 @@ sudo ./setup/install-npm.sh
 
 ./setup/set-collect.sh
 ./setup/set-lineage.sh
+./setup/set-com-show.sh
