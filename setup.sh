@@ -6,3 +6,4 @@ sudo ./setup/install-npm.sh
 ./setup/install-python.sh
 
 ./setup/set-collect.sh
+./setup/set-lineage.sh
