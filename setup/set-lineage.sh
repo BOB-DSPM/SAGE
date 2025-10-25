@@ -1,4 +1,13 @@
 
+PID=$(lsof -ti tcp:8300 || true)
+
+if [ -n "$PID" ]; then
+  echo "포트 8300 사용 중 -> PID: $PID 종료"
+  sudo kill -9 $PID
+else
+  echo "포트 8300 사용 중인 프로세스 없음"
+fi
+
 git clone https://github.com/BOB-DSPM/DSPM_DATA-Lineage-Tracking
 ls
 cd DSPM_DATA-Lineage-Tracking
