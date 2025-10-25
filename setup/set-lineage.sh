@@ -1,7 +1,7 @@
 
 git clone https://github.com/BOB-DSPM/DSPM_DATA-Lineage-Tracking
-
-cd DSPM_DATA_Lineage-Tracking
+ls
+cd DSPM_DATA-Lineage-Tracking
 python3 -m venv .venv
 source .venv/bin/activate
 
