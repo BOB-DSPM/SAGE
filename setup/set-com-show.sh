@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 PID=$(lsof -ti tcp:8003 || true)
 
@@ -12,14 +11,10 @@ fi
 git clone https://github.com/BOB-DSPM/DSPM_Compliance-show
 ls
 cd DSPM_Compliance-show
-
 python3 -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-
-# 스키마 마이그레이션(requirements 재생성 + threat_groups 테이블)
-python3 migrate_sqlite_requirements.py
 
 # 기본 CSV 로드
 python3 -m scripts.load_csv --requirements ./compliance-gorn.csv --mappings ./mapping-standard.csv
