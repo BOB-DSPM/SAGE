@@ -19,13 +19,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 스키마 마이그레이션(requirements 재생성 + threat_groups 테이블)
-python migrate_sqlite_requirements.py
+python3 migrate_sqlite_requirements.py
 
 # 기본 CSV 로드
-python -m scripts.load_csv --requirements ./compliance-gorn.csv --mappings ./mapping-standard.csv
+python3 -m scripts.load_csv --requirements ./compliance-gorn.csv --mappings ./mapping-standard.csv
 
 # 위협그룹 CSV 로드(102개 매핑) — threat_groups.csv가 있는 경우
-python scripts/load_threat_groups.py ./threat_groups.csv
+python3 scripts/load_threat_groups.py ./threat_groups.csv
 
 # 서비스 기동
-nohup python -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
+nohup python3 -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
