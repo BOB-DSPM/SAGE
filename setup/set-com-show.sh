@@ -16,11 +16,10 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-# 기본 CSV 로드
-python3 -m scripts.load_csv --requirements ./compliance-gorn.csv --mappings ./mapping-standard.csv
-
-# 위협그룹 CSV 로드(102개 매핑) — threat_groups.csv가 있는 경우
-python3 scripts/load_csv.py ./threat_groups.csv
+python3 -m scripts.load_csv \
+  --requirements ./compliance-gorn.csv \
+  --mappings     ./mapping-standard.csv \
+  --treat        ./threat_groups.csv
 
 # 서비스 기동
 nohup python3 -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
