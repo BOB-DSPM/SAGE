@@ -16,10 +16,10 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-PYTHONPATH=. python3 scripts/load_csv.py \
-  --requirements requirements.csv \
-  --mappings mappings.csv \
-  --threats threats.csv \
+python3 -m scripts.load_csv \
+  --requirements ./compliance-gorn.csv \
+  --mappings     ./mapping-standard.csv \
+  --threats ./threat_groups.csv \
   --format auto \
   --encoding utf-8-sig
 
