@@ -16,10 +16,12 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-python3 -m scripts.load_csv \
-  --requirements ./compliance-gorn.csv \
-  --mappings     ./mapping-standard.csv \
-  # --treat        ./threat_groups.csv
+PYTHONPATH=. python3 scripts/load_csv.py \
+  --requirements requirements.csv \
+  --mappings mappings.csv \
+  --threats threats.csv \
+  --format auto \
+  --encoding utf-8-sig
 
 # 서비스 기동
 nohup python3 -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
