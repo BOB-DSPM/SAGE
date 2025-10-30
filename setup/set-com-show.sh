@@ -19,7 +19,7 @@ pip install -r requirements.txt
 python3 -m scripts.load_csv \
   --requirements ./compliance-gorn.csv \
   --mappings     ./mapping-standard.csv \
-  --treat        ./threat_groups.csv
+  # --treat        ./threat_groups.csv
 
 # 서비스 기동
 nohup python3 -m app.main > com-show.log 2>&1 & echo $! > com-show.pid
