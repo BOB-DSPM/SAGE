@@ -9,3 +9,4 @@ sudo ./setup/install-npm.sh
 ./setup/set-lineage.sh
 ./setup/set-com-show.sh
 ./setup/set-com-audit.sh
+./setup/set-oss.sh
