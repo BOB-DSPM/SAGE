@@ -17,4 +17,4 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8900 > lineage.log 2>&1 & echo $! > iden-ai.pid
+nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8900 > iden-ai.log 2>&1 & echo $! > iden-ai.pid
