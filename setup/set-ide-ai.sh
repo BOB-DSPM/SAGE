@@ -22,4 +22,4 @@ wget https://github.com/BOB-DSPM/SAGE_Identity-AI/releases/download/v0.1.0/xlmr-
 ls
 tar --zstd -xf xlmr-large-min.tar.zst 
 export MODEL_DIR=./xlmr-large-min
-nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8900 > iden-ai.log 2>&1 & echo $! > iden-ai.pid
+nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8900 > iden-ai.log 2>&1 & echo $! > iden-ai.pid
