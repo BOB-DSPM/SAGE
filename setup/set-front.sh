@@ -17,5 +17,6 @@ fi
 
 cd SAGE-FRONT/dspm_dashboard
 npm install
+npm run build
 nohup env HOST=0.0.0.0 PORT=8200 npm start > frontend.log 2>&1 &
 
