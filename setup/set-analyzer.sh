@@ -21,4 +21,5 @@ cd dspm-analyzer
 pip install -r requirements.txt
 pip install fastapi uvicorn[standard]
 
+cd ..
 nohup python -m uvicorn server:app --host 0.0.0.0 --port 9000 > analyzer.log 2>&1 & echo $! > analyzer.pid
