@@ -10,4 +10,5 @@ sudo ./setup/install-npm.sh
 ./setup/set-com-show.sh
 ./setup/set-com-audit.sh
 ./setup/set-oss.sh
-# ./setup/set-ide-ai.sh
+./setup/set-analyzer.sh
+./setup/set-ide-ai.sh
