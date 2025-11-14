@@ -16,5 +16,6 @@ ls -al
 source .venv/bin/activate
 
 pip install -r requirements.txt
+sudo /bin/sh -c "$(curl -fsSL https://powerpipe.io/install/powerpipe.sh)"
 
 nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8800 > oss.log 2>&1 & echo $! > oss.pid
