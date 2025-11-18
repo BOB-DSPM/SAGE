@@ -156,13 +156,13 @@ run_subscripts() {
 
   # 서비스 계열
   run_step "Frontend 설정 및 기동 (set-front.sh)"         ./setup/set-front.sh
-  run_step "Data Collector 설정 및 기동 (set-collect.sh)" ./setup/set-collect.sh
-  run_step "Lineage Tracking 설정 및 기동 (set-lineage.sh)" ./setup/set-lineage.sh
-  run_step "Compliance-show 설정 및 기동 (set-com-show.sh)" ./setup/set-com-show.sh
-  run_step "Compliance-audit 설정 및 기동 (set-com-audit.sh)" ./setup/set-com-audit.sh
+  # run_step "Data Collector 설정 및 기동 (set-collect.sh)" ./setup/set-collect.sh
+  # run_step "Lineage Tracking 설정 및 기동 (set-lineage.sh)" ./setup/set-lineage.sh
+  # run_step "Compliance-show 설정 및 기동 (set-com-show.sh)" ./setup/set-com-show.sh
+  # run_step "Compliance-audit 설정 및 기동 (set-com-audit.sh)" ./setup/set-com-audit.sh
   run_step "Opensource Runner 설정 및 기동 (set-oss.sh)" ./setup/set-oss.sh
-  run_step "Analyzer 설정 및 기동 (set-analyzer.sh)"    ./setup/set-analyzer.sh
-  run_step "Identity-AI 설정 및 기동 (set-ide-ai.sh)"   ./setup/set-ide-ai.sh
+  # run_step "Analyzer 설정 및 기동 (set-analyzer.sh)"    ./setup/set-analyzer.sh
+  # run_step "Identity-AI 설정 및 기동 (set-ide-ai.sh)"   ./setup/set-ide-ai.sh
 }
 
 print_summary() {
