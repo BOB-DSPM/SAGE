@@ -18,8 +18,9 @@ fi
 cd SAGE-FRONT/dspm_dashboard
 npm install
 npm run build
-REACT_APP_OSS_BASE=http://3.37.174.51:8800/oss
-REACT_APP_API_HOS=3.37.174.51
+# REACT_APP_OSS_BASE=http://3.37.174.51:8800/oss
+REACT_APP_API_HOST=3.37.174.51
+REACT_APP_OSS_WORKDIR=/workspace
 
 nohup env HOST=0.0.0.0 PORT=8200 npm start > frontend.log 2>&1 &
 
