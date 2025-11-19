@@ -6,10 +6,10 @@ This directory contains helper scripts that bootstrap the SAGE platform.
 
 `run-docker-stack.sh` spins up every published Docker Hub image (`comnyang/sage-*`) behind the expected ports.
 
-1. Make sure Docker and Docker Compose are installed.
-2. Run `./setup/run-docker-stack.sh`.
+1. Run `./setup/run-docker-stack.sh`.
    - The script fetches your public IP with `curl ifconfig.me` (you can override with `SAGE_HOST_IP=...`), writes `.sage-stack.env`, and then executes `docker compose up -d`.
    - API-to-API environment variables (`MAPPING_BASE_URL`, `COLLECTOR_BASE_URL`, etc.) are generated automatically so that Compliance APIs know how to talk to each other.
+   - Docker / Docker Compose가 설치되어 있지 않으면 Ubuntu 기준으로 자동 설치를 시도합니다. 설치 직후라면 현재 세션에서는 `sudo docker`가 필요할 수 있습니다.
 3. To stop the stack: `docker compose --env-file .sage-stack.env -f docker-compose.marketplace.yml down`.
 
 Ports (host → container defaults):

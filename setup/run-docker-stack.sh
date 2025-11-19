@@ -8,15 +8,38 @@ ENV_FILE="${ROOT_DIR}/.sage-stack.env"
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 die() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
 
+install_docker_stack() {
+  log "Docker / Compose가 없어 자동 설치를 시도합니다."
+  command -v sudo >/dev/null 2>&1 || die "sudo가 필요합니다. sudo 설치 또는 root 권한으로 실행해 주세요."
+  sudo apt-get update -y
+  sudo apt-get install -y docker.io docker-compose-plugin
+  sudo systemctl enable --now docker >/dev/null 2>&1 || true
+  if ! groups "$(whoami)" | grep -qE '\bdocker\b'; then
+    log "현재 사용자를 docker 그룹에 추가합니다 (다음 로그인부터 적용)."
+    sudo usermod -aG docker "$(whoami)" || true
+  fi
+  log "Docker 설치가 완료되었습니다. 현재 세션에서는 'sudo docker' 사용이 필요할 수 있습니다."
+}
+
 ensure_requirements() {
-  command -v docker >/dev/null 2>&1 || die "docker가 필요합니다. 먼저 Docker를 설치해 주세요."
+  if ! command -v docker >/dev/null 2>&1 || { ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; }; then
+    install_docker_stack
+  fi
+  command -v docker >/dev/null 2>&1 || die "docker 명령을 찾을 수 없습니다. 수동 설치 후 다시 시도해 주세요."
 
   if docker compose version >/dev/null 2>&1; then
     COMPOSE_BIN=(docker compose)
   elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE_BIN=(docker-compose)
   else
-    die "docker compose CLI를 찾을 수 없습니다. docker compose 또는 docker-compose 중 하나가 필요합니다."
+    install_docker_stack
+    if docker compose version >/dev/null 2>&1; then
+      COMPOSE_BIN=(docker compose)
+    elif command -v docker-compose >/dev/null 2>&1; then
+      COMPOSE_BIN=(docker-compose)
+    else
+      die "docker compose CLI를 찾을 수 없습니다. docker compose 또는 docker-compose 중 하나가 필요합니다."
+    fi
   fi
 }
 
