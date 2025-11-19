@@ -11,14 +11,47 @@ die() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
 install_docker_stack() {
   log "Docker / Compose가 없어 자동 설치를 시도합니다."
   command -v sudo >/dev/null 2>&1 || die "sudo가 필요합니다. sudo 설치 또는 root 권한으로 실행해 주세요."
-  sudo apt-get update -y
-  sudo apt-get install -y docker.io docker-compose-plugin
+  if ! command -v curl >/dev/null 2>&1; then
+    sudo apt-get update -y
+    sudo apt-get install -y curl
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    log "Docker 엔진 설치 스크립트를 실행합니다."
+    curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+    sudo sh /tmp/get-docker.sh
+    rm -f /tmp/get-docker.sh
+  fi
+
+  install_compose_cli
+
   sudo systemctl enable --now docker >/dev/null 2>&1 || true
   if ! groups "$(whoami)" | grep -qE '\bdocker\b'; then
     log "현재 사용자를 docker 그룹에 추가합니다 (다음 로그인부터 적용)."
     sudo usermod -aG docker "$(whoami)" || true
   fi
   log "Docker 설치가 완료되었습니다. 현재 세션에서는 'sudo docker' 사용이 필요할 수 있습니다."
+}
+
+install_compose_cli() {
+  if docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1; then
+    return
+  fi
+
+  if command -v apt-get >/dev/null 2>&1; then
+    log "docker-compose-plugin 패키지를 설치합니다."
+    if sudo apt-get update -y && sudo apt-get install -y docker-compose-plugin; then
+      return
+    fi
+    log "패키지 설치 실패 → standalone docker-compose 바이너리를 설치합니다."
+  fi
+
+  local target="/usr/local/bin/docker-compose"
+  local url="https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)"
+  log "Downloading docker-compose binary from ${url}"
+  sudo curl -L "${url}" -o "${target}"
+  sudo chmod +x "${target}"
+  log "docker-compose 바이너리 설치 완료 (${target})"
 }
 
 ensure_requirements() {
