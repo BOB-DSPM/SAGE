@@ -1,0 +1,93 @@
+version: "3.8"
+
+services:
+  sage-front:
+    image: ${SAGE_FRONT_IMAGE:-comnyang/sage-front:latest}
+    container_name: sage-front
+    restart: unless-stopped
+    ports:
+      - "${FRONT_PORT:-8200}:8080"
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE}
+      ANALYZER_URL: ${ANALYZER_URL}
+      COLLECTOR_URL: ${COLLECTOR_URL}
+      COM_SHOW_URL: ${COM_SHOW_URL}
+      COM_AUDIT_URL: ${COM_AUDIT_URL}
+      LINEAGE_URL: ${LINEAGE_URL}
+      OSS_URL: ${OSS_URL}
+    depends_on:
+      - sage-analyzer
+      - sage-collector
+      - sage-com-show
+      - sage-com-audit
+      - sage-lineage
+      - sage-oss
+
+  sage-analyzer:
+    image: ${SAGE_ANALYZER_IMAGE:-comnyang/sage-analyzer:latest}
+    container_name: sage-analyzer
+    restart: unless-stopped
+    ports:
+      - "${ANALYZER_PORT:-9000}:9000"
+    environment:
+      PORT: ${ANALYZER_PORT}
+      HOST: 0.0.0.0
+
+  sage-collector:
+    image: ${SAGE_COLLECTOR_IMAGE:-comnyang/sage-collector:latest}
+    container_name: sage-collector
+    restart: unless-stopped
+    ports:
+      - "${COLLECTOR_PORT:-8000}:8000"
+    environment:
+      PORT: ${COLLECTOR_PORT}
+      AWS_REGION: ${AWS_REGION}
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+      STEAMPIPE_DB_HOST: ${STEAMPIPE_DB_HOST}
+      STEAMPIPE_DB_PORT: ${STEAMPIPE_DB_PORT}
+      STEAMPIPE_DB_USER: ${STEAMPIPE_DB_USER}
+      STEAMPIPE_DB_NAME: ${STEAMPIPE_DB_NAME}
+
+  sage-com-show:
+    image: ${SAGE_COM_SHOW_IMAGE:-comnyang/sage-com-show:latest}
+    container_name: sage-com-show
+    restart: unless-stopped
+    ports:
+      - "${COM_SHOW_PORT:-8003}:8003"
+    environment:
+      PORT: ${COM_SHOW_PORT}
+      APP_HOST: 0.0.0.0
+
+  sage-com-audit:
+    image: ${SAGE_COM_AUDIT_IMAGE:-comnyang/sage-com-audit:latest}
+    container_name: sage-com-audit
+    restart: unless-stopped
+    ports:
+      - "${COM_AUDIT_PORT:-8103}:8103"
+    environment:
+      PORT: ${COM_AUDIT_PORT}
+      AWS_REGION: ${AWS_REGION}
+      MAPPING_BASE_URL: ${COM_SHOW_URL}
+      COLLECTOR_BASE_URL: ${COLLECTOR_URL}
+      APP_HOST: 0.0.0.0
+
+  sage-lineage:
+    image: ${SAGE_LINEAGE_IMAGE:-comnyang/sage-lineage:latest}
+    container_name: sage-lineage
+    restart: unless-stopped
+    ports:
+      - "${LINEAGE_PORT:-8300}:8300"
+    environment:
+      PORT: ${LINEAGE_PORT}
+      AWS_REGION: ${AWS_REGION}
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+
+  sage-oss:
+    image: ${SAGE_OSS_IMAGE:-comnyang/sage-oss:latest}
+    container_name: sage-oss
+    restart: unless-stopped
+    ports:
+      - "${OSS_PORT:-8800}:8800"
+    environment:
+      PORT: ${OSS_PORT}
+      AWS_REGION: ${AWS_REGION}
