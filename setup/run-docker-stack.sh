@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.marketplace.yml"
 ENV_FILE="${ROOT_DIR}/.sage-stack.env"
+COMPOSE_BIN=()
+DOCKER_PREFIX=()
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 die() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
@@ -59,17 +61,37 @@ ensure_requirements() {
     install_docker_stack
   fi
   command -v docker >/dev/null 2>&1 || die "docker 명령을 찾을 수 없습니다. 수동 설치 후 다시 시도해 주세요."
+  set_docker_access
+  set_compose_bin
+}
 
+set_docker_access() {
+  DOCKER_PREFIX=()
+  if docker info >/dev/null 2>&1; then
+    return
+  fi
+
+  if command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
+    DOCKER_PREFIX=(sudo)
+    log "현재 세션에서는 sudo 권한으로 Docker를 실행합니다."
+    return
+  fi
+
+  die "docker 데몬에 연결할 수 없습니다. sudo docker info 명령으로 확인해 주세요."
+}
+
+set_compose_bin() {
   if docker compose version >/dev/null 2>&1; then
-    COMPOSE_BIN=(docker compose)
+    COMPOSE_BIN=("${DOCKER_PREFIX[@]}" docker compose)
   elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_BIN=(docker-compose)
+    COMPOSE_BIN=("${DOCKER_PREFIX[@]}" docker-compose)
   else
     install_docker_stack
+    set_docker_access
     if docker compose version >/dev/null 2>&1; then
-      COMPOSE_BIN=(docker compose)
+      COMPOSE_BIN=("${DOCKER_PREFIX[@]}" docker compose)
     elif command -v docker-compose >/dev/null 2>&1; then
-      COMPOSE_BIN=(docker-compose)
+      COMPOSE_BIN=("${DOCKER_PREFIX[@]}" docker-compose)
     else
       die "docker compose CLI를 찾을 수 없습니다. docker compose 또는 docker-compose 중 하나가 필요합니다."
     fi
