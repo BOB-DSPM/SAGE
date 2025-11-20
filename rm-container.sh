@@ -35,3 +35,28 @@ case "$ANSWER" in
     exit 0
     ;;
 esac
+
+echo
+echo "[INFO] 모든 Docker 이미지(rmi)도 삭제할 수 있습니다."
+IMAGES=$(docker images -q)
+if [ -z "$IMAGES" ]; then
+  echo "[INFO] 삭제할 이미지가 없습니다."
+  exit 0
+fi
+
+echo "[INFO] 대상 이미지:"
+docker images
+echo
+
+read -p "[CONFIRM] 위 모든 이미지를 삭제합니다. 진행할까요? (y/N): " IMG_ANSWER
+
+case "$IMG_ANSWER" in
+  y|Y|yes|YES)
+    echo "[STEP] 이미지 삭제 중..."
+    docker rmi -f $IMAGES || true
+    echo "[DONE] 모든 이미지 삭제 완료."
+    ;;
+  *)
+    echo "[CANCEL] 이미지 삭제를 건너뜁니다."
+    ;;
+esac
