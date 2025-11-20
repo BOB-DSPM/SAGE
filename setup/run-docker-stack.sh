@@ -124,7 +124,9 @@ write_env_file() {
   local lineage_port="${LINEAGE_PORT:-8300}"
   local oss_port="${OSS_PORT:-8800}"
 
-  local steampipe_host="${STEAMPIPE_DB_HOST:-host.docker.internal}"
+  # Steampipe runs in the collector container; default to loopback so Linux hosts
+  # don't depend on host.docker.internal being available.
+  local steampipe_host="${STEAMPIPE_DB_HOST:-127.0.0.1}"
   local steampipe_port="${STEAMPIPE_DB_PORT:-9193}"
   local steampipe_user="${STEAMPIPE_DB_USER:-steampipe}"
   local steampipe_name="${STEAMPIPE_DB_NAME:-steampipe}"
