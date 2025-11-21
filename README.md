@@ -34,25 +34,6 @@ SAGE는 MLOps를 사용하는 조직의 데이터 보안 및 거버넌스를 위
 
 ---
 
-## 🚀 주요 기능
-
-### 데이터 보안 및 거버넌스
-- AI 기반 데이터 자동 식별 및 분류
-- 실시간 데이터 흐름 추적 및 분석
-- 머신러닝 기반 이상 접근 탐지 및 신원 관리
-
-### 컴플라이언스 관리
-- 자동화된 컴플라이언스 위반 감지 및 수정
-- 실시간 컴플라이언스 상태 시각화 및 보고서 생성
-- 다양한 보안 표준 및 규제 준수 지원
-
-### 통합 보안 스캐닝
-- 멀티 클라우드 환경 보안 스캔
-- 오픈소스 보안 도구 통합 실행
-- 중앙화된 보안 정책 관리
-
----
-
 ## 🏗️ 아키텍처
 
 SAGE는 다음의 컴포넌트들로 구성됩니다:
@@ -69,32 +50,6 @@ SAGE는 다음의 컴포넌트들로 구성됩니다:
 | **Opensource Runner** | 오픈소스 보안 스캐너 통합 실행 엔진 | [→ GitHub](https://github.com/BOB-DSPM/DSPM_Opensource-Runner) |
 | **Data Collector** | 다중 소스 데이터 수집 및 통합 | [→ GitHub](https://github.com/BOB-DSPM/DSPM_Data-Collector) |
 | **Identity AI** | AI 기반 신원 및 접근 관리 | [→ GitHub](https://github.com/BOB-DSPM/SAGE_Identity-AI) |
-
-### 주요 컴포넌트 상세
-
-#### [SAGE-FRONT](https://github.com/BOB-DSPM/SAGE-FRONT)
-모든 보안 정보를 한눈에 볼 수 있는 중앙 관리 대시보드를 제공합니다. 실시간 보안 상태 모니터링, 컴플라이언스 점수, 데이터 흐름 시각화 등을 지원합니다.
-
-#### [Compliance Audit & Fix](https://github.com/BOB-DSPM/DSPM_Compliance-audit-fix)
-클라우드 환경의 컴플라이언스 위반 사항을 자동으로 감지하고, 수정 방안을 제시하며, 가능한 경우 자동 수정을 수행합니다.
-
-#### [Compliance Show](https://github.com/BOB-DSPM/DSPM_Compliance-show)
-컴플라이언스 감사 결과를 시각적으로 표현하고, 다양한 형식의 보고서를 생성합니다. 시계열 데이터를 통해 컴플라이언스 개선 추이를 확인할 수 있습니다.
-
-#### [Data Lineage Tracking](https://github.com/BOB-DSPM/DSPM_DATA-Lineage-Tracking)
-데이터의 생성부터 소비까지 전체 라이프사이클을 추적하고 시각화합니다. 데이터 출처, 변환 과정, 최종 사용처를 명확하게 파악할 수 있습니다.
-
-#### [Data Identification & Classification](https://github.com/BOB-DSPM/DSPM_DATA-Identification-Classification)
-머신러닝을 활용하여 민감 데이터를 자동으로 식별하고 적절한 보안 등급으로 분류합니다. PII, PHI 등 규제 대상 데이터를 자동으로 탐지합니다.
-
-#### [Opensource Runner](https://github.com/BOB-DSPM/DSPM_Opensource-Runner)
-Prowler, Scout Suite, Cloud Custodian 등 다양한 오픈소스 보안 도구를 통합하여 실행하고 결과를 수집합니다.
-
-#### [Data Collector](https://github.com/BOB-DSPM/DSPM_Data-Collector)
-AWS, Azure, GCP 등 다양한 클라우드 환경에서 보안 관련 데이터를 수집하고 통합합니다.
-
-#### [Identity AI](https://github.com/BOB-DSPM/SAGE_Identity-AI)
-머신러닝을 통해 비정상적인 접근 패턴을 탐지하고, 신원 기반 보안 위협을 사전에 차단합니다.
 
 ### 아키텍처 다이어그램
 ```
@@ -120,9 +75,6 @@ AWS, Azure, GCP 등 다양한 클라우드 환경에서 보안 관련 데이터�
 ## 🛠️ 기술 스택
 
 SAGE는 다양한 오픈소스 기술을 활용하여 구축되었습니다:
-
-### 컨테이너 오케스트레이션
-- **[Kubernetes](https://kubernetes.io/)** - 컨테이너화된 애플리케이션 자동 배포, 스케일링 및 관리
 
 ### 보안 스캐닝 도구
 - **[Prowler](https://github.com/prowler-cloud/prowler)** - AWS, Azure, GCP, Kubernetes 환경에 대한 보안 모범 사례 및 컴플라이언스 검사
