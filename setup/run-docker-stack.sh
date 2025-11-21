@@ -123,6 +123,7 @@ write_env_file() {
   local com_audit_port="${COM_AUDIT_PORT:-8103}"
   local lineage_port="${LINEAGE_PORT:-8300}"
   local oss_port="${OSS_PORT:-8800}"
+  local oss_workdir="${OSS_WORKDIR:-/workspace}"
 
   # Steampipe runs in the collector container; default to loopback so Linux hosts
   # don't depend on host.docker.internal being available.
@@ -163,6 +164,15 @@ STEAMPIPE_DB_HOST=${steampipe_host}
 STEAMPIPE_DB_PORT=${steampipe_port}
 STEAMPIPE_DB_USER=${steampipe_user}
 STEAMPIPE_DB_NAME=${steampipe_name}
+REACT_APP_API_HOST=${host_ip}
+REACT_APP_AEGIS_API_BASE=${analyzer_url}
+REACT_APP_COLLECTOR_API_BASE=${collector_url}
+REACT_APP_INVENTORY_API_BASE=${collector_url}
+REACT_APP_COMPLIANCE_API_BASE=${com_show_url}
+REACT_APP_AUDIT_API_BASE=${com_audit_url}
+REACT_APP_LINEAGE_API_BASE=${lineage_url}
+REACT_APP_OSS_BASE=${oss_url}/oss
+REACT_APP_OSS_WORKDIR=${oss_workdir}
 SAGE_FRONT_IMAGE=${SAGE_FRONT_IMAGE:-comnyang/sage-front:latest}
 SAGE_ANALYZER_IMAGE=${SAGE_ANALYZER_IMAGE:-comnyang/sage-analyzer:latest}
 SAGE_COLLECTOR_IMAGE=${SAGE_COLLECTOR_IMAGE:-comnyang/sage-collector:latest}

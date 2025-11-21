@@ -18,9 +18,23 @@ fi
 cd SAGE-FRONT/dspm_dashboard
 npm install
 npm run build
-# REACT_APP_OSS_BASE=http://3.37.174.51:8800/oss
-REACT_APP_API_HOST=127.0.0.1
-REACT_APP_OSS_WORKDIR=/workspace
 
-nohup env HOST=0.0.0.0 PORT=8200 npm start > frontend.log 2>&1 &
+# 기본 API 호스트(IP)는 외부에서 전달된 SAGE_HOST_IP 사용, 없으면 로컬
+API_HOST="${SAGE_HOST_IP:-127.0.0.1}"
+COLLECTOR_BASE="http://${API_HOST}:8000"
+SHOW_BASE="http://${API_HOST}:8003"
+AUDIT_BASE="http://${API_HOST}:8103"
+LINEAGE_BASE="http://${API_HOST}:8300"
+OSS_BASE="http://${API_HOST}:8800/oss"
 
+nohup env \
+  HOST=0.0.0.0 PORT=8200 \
+  REACT_APP_API_HOST="${API_HOST}" \
+  REACT_APP_INVENTORY_API_BASE="${COLLECTOR_BASE}" \
+  REACT_APP_COLLECTOR_API_BASE="${COLLECTOR_BASE}" \
+  REACT_APP_COMPLIANCE_API_BASE="${SHOW_BASE}" \
+  REACT_APP_AUDIT_API_BASE="${AUDIT_BASE}" \
+  REACT_APP_LINEAGE_API_BASE="${LINEAGE_BASE}" \
+  REACT_APP_OSS_BASE="${OSS_BASE}" \
+  REACT_APP_OSS_WORKDIR=/workspace \
+  npm start > frontend.log 2>&1 &
