@@ -185,6 +185,7 @@ SAGE_COM_AUDIT_IMAGE=${SAGE_COM_AUDIT_IMAGE:-comnyang/sage-com-audit:latest}
 SAGE_LINEAGE_IMAGE=${SAGE_LINEAGE_IMAGE:-comnyang/sage-lineage:latest}
 SAGE_OSS_IMAGE=${SAGE_OSS_IMAGE:-comnyang/sage-oss:latest}
 SAGE_AI_IMAGE=${SAGE_AI_IMAGE:-comnyang/sage-ai:latest}
+SAGE_HOST=${host_ip}
 EOF
 }
 
