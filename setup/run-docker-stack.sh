@@ -123,6 +123,7 @@ write_env_file() {
   local com_audit_port="${COM_AUDIT_PORT:-8103}"
   local lineage_port="${LINEAGE_PORT:-8300}"
   local oss_port="${OSS_PORT:-8800}"
+  local ai_port="${AI_PORT:-8900}"
   local oss_workdir="${OSS_WORKDIR:-/workspace}"
 
   # Steampipe runs in the collector container; default to loopback so Linux hosts
@@ -140,6 +141,7 @@ write_env_file() {
   local com_audit_url="${base}:${com_audit_port}"
   local lineage_url="${base}:${lineage_port}"
   local oss_url="${base}:${oss_port}"
+  local ai_url="${base}:${ai_port}"
 
   cat > "${ENV_FILE}" <<EOF
 # 자동 생성 파일 - 필요 시 setup/run-docker-stack.sh를 재실행하세요.
@@ -152,6 +154,7 @@ COM_SHOW_PORT=${com_show_port}
 COM_AUDIT_PORT=${com_audit_port}
 LINEAGE_PORT=${lineage_port}
 OSS_PORT=${oss_port}
+AI_PORT=${ai_port}
 FRONT_URL=${front_url}
 ANALYZER_URL=${analyzer_url}
 COLLECTOR_URL=${collector_url}
@@ -159,6 +162,7 @@ COM_SHOW_URL=${com_show_url}
 COM_AUDIT_URL=${com_audit_url}
 LINEAGE_URL=${lineage_url}
 OSS_URL=${oss_url}
+AI_URL=${ai_url}
 AWS_REGION=${aws_region}
 STEAMPIPE_DB_HOST=${steampipe_host}
 STEAMPIPE_DB_PORT=${steampipe_port}
@@ -180,6 +184,7 @@ SAGE_COM_SHOW_IMAGE=${SAGE_COM_SHOW_IMAGE:-comnyang/sage-com-show:latest}
 SAGE_COM_AUDIT_IMAGE=${SAGE_COM_AUDIT_IMAGE:-comnyang/sage-com-audit:latest}
 SAGE_LINEAGE_IMAGE=${SAGE_LINEAGE_IMAGE:-comnyang/sage-lineage:latest}
 SAGE_OSS_IMAGE=${SAGE_OSS_IMAGE:-comnyang/sage-oss:latest}
+SAGE_AI_IMAGE=${SAGE_AI_IMAGE:-comnyang/sage-ai:latest}
 EOF
 }
 
@@ -201,6 +206,7 @@ SAGE Docker 스택 기동 완료 ✅
  - Compliance-audit:    ${COM_AUDIT_URL}
  - Lineage API:         ${LINEAGE_URL}
  - OSS Runner API:      ${OSS_URL}
+ - AI API:              ${AI_URL}
 
 docker compose down 시:
   ${COMPOSE_BIN[*]} --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down

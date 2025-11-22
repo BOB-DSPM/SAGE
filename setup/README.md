@@ -23,5 +23,6 @@ Ports (host → container defaults):
 | Compliance-audit API | `comnyang/sage-com-audit`      | 8103 → 8103 |
 | Lineage API          | `comnyang/sage-lineage`        | 8300 → 8300 |
 | OSS Runner           | `comnyang/sage-oss`            | 8800 → 8800 |
+| AI API               | `comnyang/sage-ai`             | 8900 → 8900 |
 
 Set `AWS_REGION`, `FRONT_PORT`, etc. before running the script if you need to override defaults. All resolved values end up in `.sage-stack.env`, which is already ignored by git.
