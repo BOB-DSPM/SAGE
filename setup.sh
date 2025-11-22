@@ -27,17 +27,24 @@ run_docker_stack() {
 }
 
 ensure_sage_host() {
-  if [ -z "${SAGE_HOST:-}" ]; then
-    local ip
-    ip="$(hostname -I | awk '{print $1}')"
-    if [ -n "$ip" ]; then
-      export SAGE_HOST="$ip"
-      log "SAGE_HOST 자동 설정: $SAGE_HOST"
-    else
-      log "SAGE_HOST 자동 설정 실패 (hostname -I 결과 없음). 환경변수로 직접 지정해 주세요."
-    fi
-  else
+  if [ -n "${SAGE_HOST:-}" ]; then
     log "SAGE_HOST 이미 설정됨: $SAGE_HOST"
+    return
+  fi
+
+  local ip
+  ip="$(curl -fsS --max-time 3 ifconfig.me 2>/dev/null || true)"
+  if [ -z "$ip" ]; then
+    ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+
+  if [ -n "$ip" ]; then
+    export SAGE_HOST="$ip"
+    # run-docker-stack.sh는 SAGE_HOST_IP를 참고하므로 함께 맞춰 둔다.
+    export SAGE_HOST_IP="${SAGE_HOST_IP:-$ip}"
+    log "SAGE_HOST 자동 설정: $SAGE_HOST"
+  else
+    log "SAGE_HOST 자동 설정 실패 (ifconfig.me / hostname -I 결과 없음). 환경변수로 직접 지정해 주세요."
   fi
 }
 
