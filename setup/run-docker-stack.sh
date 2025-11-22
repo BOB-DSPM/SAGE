@@ -125,6 +125,7 @@ write_env_file() {
   local oss_port="${OSS_PORT:-8800}"
   local ai_port="${AI_PORT:-8900}"
   local oss_workdir="${OSS_WORKDIR:-/workspace}"
+  local pii_model_url="${PII_MODEL_URL:-http://sage-ai:8900/infer}"
 
   # Steampipe runs in the collector container; default to loopback so Linux hosts
   # don't depend on host.docker.internal being available.
@@ -186,6 +187,7 @@ SAGE_LINEAGE_IMAGE=${SAGE_LINEAGE_IMAGE:-comnyang/sage-lineage:latest}
 SAGE_OSS_IMAGE=${SAGE_OSS_IMAGE:-comnyang/sage-oss:latest}
 SAGE_AI_IMAGE=${SAGE_AI_IMAGE:-comnyang/sage-ai:latest}
 SAGE_HOST=${host_ip}
+PII_MODEL_URL=${pii_model_url}
 EOF
 }
 

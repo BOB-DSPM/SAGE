@@ -42,6 +42,8 @@ services:
     environment:
       PORT: ${ANALYZER_PORT}
       HOST: 0.0.0.0
+      SAGE_HOST: ${SAGE_HOST}
+      PII_MODEL_URL: ${PII_MODEL_URL}
 
   sage-collector:
     image: ${SAGE_COLLECTOR_IMAGE:-comnyang/sage-collector:latest}
