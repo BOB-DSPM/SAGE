@@ -26,8 +26,24 @@ run_docker_stack() {
   "$script"
 }
 
+ensure_sage_host() {
+  if [ -z "${SAGE_HOST:-}" ]; then
+    local ip
+    ip="$(hostname -I | awk '{print $1}')"
+    if [ -n "$ip" ]; then
+      export SAGE_HOST="$ip"
+      log "SAGE_HOST 자동 설정: $SAGE_HOST"
+    else
+      log "SAGE_HOST 자동 설정 실패 (hostname -I 결과 없음). 환경변수로 직접 지정해 주세요."
+    fi
+  else
+    log "SAGE_HOST 이미 설정됨: $SAGE_HOST"
+  fi
+}
+
 main() {
   ensure_in_repo_root
+  ensure_sage_host
   run_docker_stack
   ok "SAGE Docker 스택 셋업이 완료되었습니다."
 }
