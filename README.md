@@ -119,7 +119,8 @@ chmod +x setup.sh
 브라우저에서 `http://localhost:8080`으로 접속하여 SAGE 대시보드를 확인할 수 있습니다.
 
 ### GitHub Actions Marketplace 액션 사용 예시
-루트의 `action.yml` Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다. Docker가 켜진 러너(Ubuntu)에서 사용하세요.
+루트의 `action.yml` Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다. 
+Docker가 켜진 러너(Ubuntu)에서 사용하세요.
 
 ```yaml
 jobs:
@@ -176,3 +177,4 @@ jobs:
 **[⬆ 맨 위로](#sage)**
 
 </div>
+
