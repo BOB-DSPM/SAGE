@@ -119,25 +119,21 @@ chmod +x setup.sh
 브라우저에서 `http://localhost:8080`으로 접속하여 SAGE 대시보드를 확인할 수 있습니다.
 
 ### GitHub Actions Marketplace 액션 사용 예시
-`action.yml`에 포함된 Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다.
+루트의 `action.yml` Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다. Docker가 켜진 러너(Ubuntu)에서 사용하세요.
 
 ```yaml
 jobs:
   launch-sage:
-    runs-on: ubuntu-latest # Docker 사용이 가능한 러너를 선택하세요.
+    runs-on: ubuntu-latest # Docker 사용 가능한 러너
     steps:
-      - uses: owner/SAGE@v1
+      - uses: com_nyang/SAGE@v1
         with:
-          host-base: http://localhost
-          front-port: 8200
-          analyzer-port: 9000
-          collector-port: 8000
-          com-show-port: 8003
-          com-audit-port: 8103
-          lineage-port: 8300
-          oss-port: 8800
-          ai-port: 8900
-          # 필요 시 이미지 오버라이드도 추가: front-image, analyzer-image 등
+          host_ip: 127.0.0.1
+          aws_region: ap-northeast-2
+          front_image: comnyang/sage-front:latest
+          analyzer_image: comnyang/sage-analyzer:latest
+          collector_image: comnyang/sage-collector:latest
+          # 필요 시 포트/URL 오버라이드: front_port, analyzer_port, public_base, analyzer_url 등
 ```
 
 > Marketplace에 게시하려면 `git tag v1 && git push origin v1`으로 메이저 태그를 먼저 발행하고, 리포지토리 페이지의 **Publish this Action to Marketplace** 버튼을 통해 제출하세요.
@@ -146,6 +142,17 @@ jobs:
 1. `docker compose -f docker-compose.marketplace.yml config`로 컴포즈 파일이 유효한지 확인합니다.
 2. `git tag -l 'v*'`로 기존 태그를 확인한 뒤 `git tag v1 && git push origin v1`으로 메이저 태그를 발행합니다.
 3. 리포지토리 상단 배너 **Publish this Action to Marketplace**에서 제출을 완료합니다. (Docker 사용 가능 러너에서 동작함을 README에 명시)
+
+### GitHub Actions 워크플로우: 최신 이미지로 스택 새로고침
+`.github/workflows/refresh-stack.yml`는 Docker Hub의 최신 이미지로 스택을 다시 올리는 워크플로우입니다.
+
+- 트리거: 매일 UTC 03:00(크론) 또는 Actions 탭에서 수동 실행(workflow_dispatch)
+- 기본 동작: `docker compose pull` → `docker compose up -d` → `docker image prune -f`
+- 입력값: `compose_file`(옵션, 기본 `docker-compose.marketplace.yml`)
+
+수동 실행 예시:
+1. GitHub → Actions → “Refresh SAGE stack on Docker image update” 선택
+2. `Run workflow` 버튼 클릭 (필요 시 `compose_file` 입력)
 
 ---
 
