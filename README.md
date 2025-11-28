@@ -79,7 +79,7 @@ SAGE는 다양한 오픈소스 기술을 활용하여 구축되었습니다:
 ### 보안 스캐닝 도구
 - **[Prowler](https://github.com/prowler-cloud/prowler)** - AWS, Azure, GCP, Kubernetes 환경에 대한 보안 모범 사례 및 컴플라이언스 검사
 - **[Scout Suite](https://github.com/nccgroup/ScoutSuite)** - 멀티 클라우드 보안 감사 도구
-- **[Cloud Custodian](https://cloudcustodian.io/)** - 클라우드 자원의 정책 기반 관리 및  자동화
+- **[Cloud Custodian](https://cloudcustodian.io/)** - 클라우드 자원의 정책 기반 관리 및 자동화
 - **[Steampipe](https://steampipe.io/downloads)** - 클라우드 API를 SQL로 쿼리할 수 있게 해주는 도구
 - **[Powerpipe mods](https://powerpipe.io/downloads)** - 대시보드 및 벤치마크 프레임워크
 ---
@@ -177,6 +177,7 @@ jobs:
 **[⬆ 맨 위로](#sage)**
 
 </div>
+
 
 
 
