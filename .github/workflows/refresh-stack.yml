@@ -1,0 +1,35 @@
+name: Refresh SAGE stack on Docker image update
+
+on:
+  workflow_dispatch:
+    inputs:
+      compose_file:
+        description: "Compose file to use"
+        required: false
+        default: "docker-compose.marketplace.yml"
+  schedule:
+    # 매일 새벽 3시(UTC) 이미지 태그 갱신 확인
+    - cron: "0 3 * * *"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Docker info
+        run: docker info
+
+      - name: Pull latest images
+        run: |
+          docker compose -f ${{ inputs.compose_file || 'docker-compose.marketplace.yml' }} pull
+
+      - name: Recreate containers (zero-downtime-ish)
+        run: |
+          docker compose -f ${{ inputs.compose_file || 'docker-compose.marketplace.yml' }} up -d
+
+      - name: Prune dangling images
+        run: docker image prune -f
