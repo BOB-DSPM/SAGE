@@ -1,0 +1,228 @@
+name: "SAGE stack bootstrap"
+description: "Launch the SAGE microservice stack with docker-compose.marketplace.yml"
+author: BOB-DSPM
+branding:
+  icon: "cloud"
+  color: "blue"
+
+inputs:
+  front_image:
+    description: "Override sage-front image tag"
+    required: false
+    default: "comnyang/sage-front:latest"
+  analyzer_image:
+    description: "Override sage-analyzer image tag"
+    required: false
+    default: "comnyang/sage-analyzer:latest"
+  collector_image:
+    description: "Override sage-collector image tag"
+    required: false
+    default: "comnyang/sage-collector:latest"
+  com_show_image:
+    description: "Override sage-com-show image tag"
+    required: false
+    default: "comnyang/sage-com-show:latest"
+  com_audit_image:
+    description: "Override sage-com-audit image tag"
+    required: false
+    default: "comnyang/sage-com-audit:latest"
+  lineage_image:
+    description: "Override sage-lineage image tag"
+    required: false
+    default: "comnyang/sage-lineage:latest"
+  oss_image:
+    description: "Override sage-oss image tag"
+    required: false
+    default: "comnyang/sage-oss:latest"
+  ai_image:
+    description: "Override sage-ai image tag"
+    required: false
+    default: "comnyang/sage-ai:latest"
+
+  front_port:
+    description: "Host port to expose sage-front (default 8200)"
+    required: false
+    default: "8200"
+  analyzer_port:
+    description: "Host port to expose sage-analyzer (default 9000)"
+    required: false
+    default: "9000"
+  collector_port:
+    description: "Host port to expose sage-collector (default 8000)"
+    required: false
+    default: "8000"
+  com_show_port:
+    description: "Host port to expose sage-com-show (default 8003)"
+    required: false
+    default: "8003"
+  com_audit_port:
+    description: "Host port to expose sage-com-audit (default 8103)"
+    required: false
+    default: "8103"
+  lineage_port:
+    description: "Host port to expose sage-lineage (default 8300)"
+    required: false
+    default: "8300"
+  oss_port:
+    description: "Host port to expose sage-oss (default 8800)"
+    required: false
+    default: "8800"
+  ai_port:
+    description: "Host port to expose sage-ai (default 8900)"
+    required: false
+    default: "8900"
+
+  public_base:
+    description: "Public base URL for the front-end (defaults to http://localhost:<front_port>)"
+    required: false
+    default: ""
+  host_ip:
+    description: "Host IP/hostname used by front-end to call APIs (defaults to 127.0.0.1)"
+    required: false
+    default: "127.0.0.1"
+  analyzer_url:
+    description: "Analyzer service URL (defaults to http://<host_ip>:<analyzer_port>)"
+    required: false
+    default: ""
+  collector_url:
+    description: "Collector service URL (defaults to http://<host_ip>:<collector_port>)"
+    required: false
+    default: ""
+  com_show_url:
+    description: "Compliance show service URL (defaults to http://<host_ip>:<com_show_port>)"
+    required: false
+    default: ""
+  com_audit_url:
+    description: "Compliance audit service URL (defaults to http://<host_ip>:<com_audit_port>)"
+    required: false
+    default: ""
+  lineage_url:
+    description: "Lineage service URL (defaults to http://<host_ip>:<lineage_port>)"
+    required: false
+    default: ""
+  oss_url:
+    description: "OSS service URL (defaults to http://<host_ip>:<oss_port>)"
+    required: false
+    default: ""
+  react_app_oss_workdir:
+    description: "Working directory path for OSS scans"
+    required: false
+    default: "/tmp/sage-oss"
+  pii_model_url:
+    description: "PII model URL for analyzer"
+    required: false
+    default: ""
+
+  aws_region:
+    description: "AWS region for services requiring AWS access"
+    required: false
+    default: "ap-northeast-2"
+  steampipe_db_host:
+    description: "Steampipe DB host for collector"
+    required: false
+    default: ""
+  steampipe_db_port:
+    description: "Steampipe DB port for collector"
+    required: false
+    default: ""
+  steampipe_db_user:
+    description: "Steampipe DB user for collector"
+    required: false
+    default: ""
+  steampipe_db_name:
+    description: "Steampipe DB name for collector"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Ensure Docker is available
+      shell: bash
+      run: docker --version
+
+    - name: Validate compose file
+      shell: bash
+      run: docker compose -f docker-compose.marketplace.yml config
+
+    - name: Prepare environment variables
+      shell: bash
+      run: |
+        set -euo pipefail
+        HOST_IP="${{ inputs.host_ip }}"
+        FRONT_PORT="${{ inputs.front_port }}"
+        ANALYZER_PORT="${{ inputs.analyzer_port }}"
+        COLLECTOR_PORT="${{ inputs.collector_port }}"
+        COM_SHOW_PORT="${{ inputs.com_show_port }}"
+        COM_AUDIT_PORT="${{ inputs.com_audit_port }}"
+        LINEAGE_PORT="${{ inputs.lineage_port }}"
+        OSS_PORT="${{ inputs.oss_port }}"
+        AI_PORT="${{ inputs.ai_port }}"
+
+        PUBLIC_BASE="${{ inputs.public_base }}"
+        [ -n "$PUBLIC_BASE" ] || PUBLIC_BASE="http://localhost:${FRONT_PORT}"
+
+        ANALYZER_URL="${{ inputs.analyzer_url }}"
+        [ -n "$ANALYZER_URL" ] || ANALYZER_URL="http://${HOST_IP}:${ANALYZER_PORT}"
+
+        COLLECTOR_URL="${{ inputs.collector_url }}"
+        [ -n "$COLLECTOR_URL" ] || COLLECTOR_URL="http://${HOST_IP}:${COLLECTOR_PORT}"
+
+        COM_SHOW_URL="${{ inputs.com_show_url }}"
+        [ -n "$COM_SHOW_URL" ] || COM_SHOW_URL="http://${HOST_IP}:${COM_SHOW_PORT}"
+
+        COM_AUDIT_URL="${{ inputs.com_audit_url }}"
+        [ -n "$COM_AUDIT_URL" ] || COM_AUDIT_URL="http://${HOST_IP}:${COM_AUDIT_PORT}"
+
+        LINEAGE_URL="${{ inputs.lineage_url }}"
+        [ -n "$LINEAGE_URL" ] || LINEAGE_URL="http://${HOST_IP}:${LINEAGE_PORT}"
+
+        OSS_URL="${{ inputs.oss_url }}"
+        [ -n "$OSS_URL" ] || OSS_URL="http://${HOST_IP}:${OSS_PORT}"
+
+        cat <<'EOF' >> "$GITHUB_ENV"
+SAGE_FRONT_IMAGE=${{ inputs.front_image }}
+SAGE_ANALYZER_IMAGE=${{ inputs.analyzer_image }}
+SAGE_COLLECTOR_IMAGE=${{ inputs.collector_image }}
+SAGE_COM_SHOW_IMAGE=${{ inputs.com_show_image }}
+SAGE_COM_AUDIT_IMAGE=${{ inputs.com_audit_image }}
+SAGE_LINEAGE_IMAGE=${{ inputs.lineage_image }}
+SAGE_OSS_IMAGE=${{ inputs.oss_image }}
+SAGE_AI_IMAGE=${{ inputs.ai_image }}
+
+FRONT_PORT=${FRONT_PORT}
+ANALYZER_PORT=${ANALYZER_PORT}
+COLLECTOR_PORT=${COLLECTOR_PORT}
+COM_SHOW_PORT=${COM_SHOW_PORT}
+COM_AUDIT_PORT=${COM_AUDIT_PORT}
+LINEAGE_PORT=${LINEAGE_PORT}
+OSS_PORT=${OSS_PORT}
+AI_PORT=${AI_PORT}
+
+PUBLIC_BASE=${PUBLIC_BASE}
+HOST_IP=${HOST_IP}
+ANALYZER_URL=${ANALYZER_URL}
+COLLECTOR_URL=${COLLECTOR_URL}
+COM_SHOW_URL=${COM_SHOW_URL}
+COM_AUDIT_URL=${COM_AUDIT_URL}
+LINEAGE_URL=${LINEAGE_URL}
+OSS_URL=${OSS_URL}
+REACT_APP_OSS_WORKDIR=${{ inputs.react_app_oss_workdir }}
+
+PII_MODEL_URL=${{ inputs.pii_model_url }}
+AWS_REGION=${{ inputs.aws_region }}
+AWS_DEFAULT_REGION=${{ inputs.aws_region }}
+STEAMPIPE_DB_HOST=${{ inputs.steampipe_db_host }}
+STEAMPIPE_DB_PORT=${{ inputs.steampipe_db_port }}
+STEAMPIPE_DB_USER=${{ inputs.steampipe_db_user }}
+STEAMPIPE_DB_NAME=${{ inputs.steampipe_db_name }}
+SAGE_HOST=${HOST_IP}
+SAGE_HOST_IP=${HOST_IP}
+EOF
+
+    - name: Launch SAGE stack
+      shell: bash
+      run: docker compose -f docker-compose.marketplace.yml up -d

@@ -120,6 +120,27 @@ chmod +x setup.sh
 
 ---
 
+## 🛎️ GitHub Actions Marketplace 사용 예시
+
+이 레포만으로 전체 스택을 띄우는 Marketplace 액션을 제공합니다. 러너에 **Docker**가 켜져 있어야 하며, 기본 포트는 `docker-compose.marketplace.yml`의 기본값(8200, 9000, 8000, 8003, 8103, 8300, 8800, 8900)을 사용합니다.
+
+```yaml
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: com_nyang/SAGE@v1
+        with:
+          front_image: comnyang/sage-front:latest
+          analyzer_image: comnyang/sage-analyzer:latest
+          aws_region: ap-northeast-2
+          host_ip: 127.0.0.1 # 러너에서 서비스에 접근할 호스트 IP (필요 시 수정)
+```
+
+필요하면 `public_base`, `*_url`, 포트(`front_port` 등), OSS 워크디렉터리(`react_app_oss_workdir`), PII 모델 URL 등을 `with`에 추가해 커스터마이징할 수 있습니다. 게시/심사 준비 체크리스트는 `docs/github-actions-marketplace.md`를 참고하세요.
+
+---
+
 ## 📚 문서
 
 각 컴포넌트의 상세한 문서는 해당 저장소의 README를 참고하시기 바랍니다.
