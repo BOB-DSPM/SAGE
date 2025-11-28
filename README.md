@@ -118,26 +118,34 @@ chmod +x setup.sh
 ```
 브라우저에서 `http://localhost:8080`으로 접속하여 SAGE 대시보드를 확인할 수 있습니다.
 
----
-
-## 🛎️ GitHub Actions Marketplace 사용 예시
-
-이 레포만으로 전체 스택을 띄우는 Marketplace 액션을 제공합니다. 러너에 **Docker**가 켜져 있어야 하며, 기본 포트는 `docker-compose.marketplace.yml`의 기본값(8200, 9000, 8000, 8003, 8103, 8300, 8800, 8900)을 사용합니다.
+### GitHub Actions Marketplace 액션 사용 예시
+`action.yml`에 포함된 Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다.
 
 ```yaml
 jobs:
-  launch:
-    runs-on: ubuntu-latest
+  launch-sage:
+    runs-on: ubuntu-latest # Docker 사용이 가능한 러너를 선택하세요.
     steps:
-      - uses: com_nyang/SAGE@v1
+      - uses: owner/SAGE@v1
         with:
-          front_image: comnyang/sage-front:latest
-          analyzer_image: comnyang/sage-analyzer:latest
-          aws_region: ap-northeast-2
-          host_ip: 127.0.0.1 # 러너에서 서비스에 접근할 호스트 IP (필요 시 수정)
+          host-base: http://localhost
+          front-port: 8200
+          analyzer-port: 9000
+          collector-port: 8000
+          com-show-port: 8003
+          com-audit-port: 8103
+          lineage-port: 8300
+          oss-port: 8800
+          ai-port: 8900
+          # 필요 시 이미지 오버라이드도 추가: front-image, analyzer-image 등
 ```
 
-필요하면 `public_base`, `*_url`, 포트(`front_port` 등), OSS 워크디렉터리(`react_app_oss_workdir`), PII 모델 URL 등을 `with`에 추가해 커스터마이징할 수 있습니다. 게시/심사 준비 체크리스트는 `docs/github-actions-marketplace.md`를 참고하세요.
+> Marketplace에 게시하려면 `git tag v1 && git push origin v1`으로 메이저 태그를 먼저 발행하고, 리포지토리 페이지의 **Publish this Action to Marketplace** 버튼을 통해 제출하세요.
+
+#### Marketplace 제출 절차 (요약)
+1. `docker compose -f docker-compose.marketplace.yml config`로 컴포즈 파일이 유효한지 확인합니다.
+2. `git tag -l 'v*'`로 기존 태그를 확인한 뒤 `git tag v1 && git push origin v1`으로 메이저 태그를 발행합니다.
+3. 리포지토리 상단 배너 **Publish this Action to Marketplace**에서 제출을 완료합니다. (Docker 사용 가능 러너에서 동작함을 README에 명시)
 
 ---
 

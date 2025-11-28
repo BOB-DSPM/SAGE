@@ -6,131 +6,104 @@ branding:
   color: "blue"
 
 inputs:
-  front_image:
-    description: "Override sage-front image tag"
+  compose-file:
+    description: "Compose file path"
     required: false
-    default: "comnyang/sage-front:latest"
-  analyzer_image:
-    description: "Override sage-analyzer image tag"
+    default: "docker-compose.marketplace.yml"
+  host-base:
+    description: "Base host URL (scheme + host) for service endpoints"
     required: false
-    default: "comnyang/sage-analyzer:latest"
-  collector_image:
-    description: "Override sage-collector image tag"
-    required: false
-    default: "comnyang/sage-collector:latest"
-  com_show_image:
-    description: "Override sage-com-show image tag"
-    required: false
-    default: "comnyang/sage-com-show:latest"
-  com_audit_image:
-    description: "Override sage-com-audit image tag"
-    required: false
-    default: "comnyang/sage-com-audit:latest"
-  lineage_image:
-    description: "Override sage-lineage image tag"
-    required: false
-    default: "comnyang/sage-lineage:latest"
-  oss_image:
-    description: "Override sage-oss image tag"
-    required: false
-    default: "comnyang/sage-oss:latest"
-  ai_image:
-    description: "Override sage-ai image tag"
-    required: false
-    default: "comnyang/sage-ai:latest"
-
-  front_port:
-    description: "Host port to expose sage-front (default 8200)"
+    default: "http://localhost"
+  front-port:
+    description: "Host port for SAGE front"
     required: false
     default: "8200"
-  analyzer_port:
-    description: "Host port to expose sage-analyzer (default 9000)"
+  analyzer-port:
+    description: "Host port for analyzer"
     required: false
     default: "9000"
-  collector_port:
-    description: "Host port to expose sage-collector (default 8000)"
+  collector-port:
+    description: "Host port for collector"
     required: false
     default: "8000"
-  com_show_port:
-    description: "Host port to expose sage-com-show (default 8003)"
+  com-show-port:
+    description: "Host port for compliance show"
     required: false
     default: "8003"
-  com_audit_port:
-    description: "Host port to expose sage-com-audit (default 8103)"
+  com-audit-port:
+    description: "Host port for compliance audit"
     required: false
     default: "8103"
-  lineage_port:
-    description: "Host port to expose sage-lineage (default 8300)"
+  lineage-port:
+    description: "Host port for lineage"
     required: false
     default: "8300"
-  oss_port:
-    description: "Host port to expose sage-oss (default 8800)"
+  oss-port:
+    description: "Host port for OSS runner"
     required: false
     default: "8800"
-  ai_port:
-    description: "Host port to expose sage-ai (default 8900)"
+  ai-port:
+    description: "Host port for identity AI"
     required: false
     default: "8900"
-
-  public_base:
-    description: "Public base URL for the front-end (defaults to http://localhost:<front_port>)"
+  oss-workdir:
+    description: "Workdir path for OSS runner UI"
+    required: false
+    default: "/tmp"
+  pii-model-url:
+    description: "Optional PII model endpoint for analyzer"
     required: false
     default: ""
-  host_ip:
-    description: "Host IP/hostname used by front-end to call APIs (defaults to 127.0.0.1)"
-    required: false
-    default: "127.0.0.1"
-  analyzer_url:
-    description: "Analyzer service URL (defaults to http://<host_ip>:<analyzer_port>)"
-    required: false
-    default: ""
-  collector_url:
-    description: "Collector service URL (defaults to http://<host_ip>:<collector_port>)"
-    required: false
-    default: ""
-  com_show_url:
-    description: "Compliance show service URL (defaults to http://<host_ip>:<com_show_port>)"
-    required: false
-    default: ""
-  com_audit_url:
-    description: "Compliance audit service URL (defaults to http://<host_ip>:<com_audit_port>)"
-    required: false
-    default: ""
-  lineage_url:
-    description: "Lineage service URL (defaults to http://<host_ip>:<lineage_port>)"
-    required: false
-    default: ""
-  oss_url:
-    description: "OSS service URL (defaults to http://<host_ip>:<oss_port>)"
-    required: false
-    default: ""
-  react_app_oss_workdir:
-    description: "Working directory path for OSS scans"
-    required: false
-    default: "/tmp/sage-oss"
-  pii_model_url:
-    description: "PII model URL for analyzer"
-    required: false
-    default: ""
-
-  aws_region:
-    description: "AWS region for services requiring AWS access"
+  aws-region:
+    description: "AWS region for services that require it"
     required: false
     default: "ap-northeast-2"
-  steampipe_db_host:
-    description: "Steampipe DB host for collector"
+  steampipe-db-host:
+    description: "Optional Steampipe DB host override"
     required: false
     default: ""
-  steampipe_db_port:
-    description: "Steampipe DB port for collector"
+  steampipe-db-port:
+    description: "Optional Steampipe DB port override"
     required: false
     default: ""
-  steampipe_db_user:
-    description: "Steampipe DB user for collector"
+  steampipe-db-user:
+    description: "Optional Steampipe DB user override"
     required: false
     default: ""
-  steampipe_db_name:
-    description: "Steampipe DB name for collector"
+  steampipe-db-name:
+    description: "Optional Steampipe DB name override"
+    required: false
+    default: ""
+  front-image:
+    description: "Override front image tag"
+    required: false
+    default: ""
+  analyzer-image:
+    description: "Override analyzer image tag"
+    required: false
+    default: ""
+  collector-image:
+    description: "Override collector image tag"
+    required: false
+    default: ""
+  com-show-image:
+    description: "Override compliance show image tag"
+    required: false
+    default: ""
+  com-audit-image:
+    description: "Override compliance audit image tag"
+    required: false
+    default: ""
+  lineage-image:
+    description: "Override lineage image tag"
+    required: false
+    default: ""
+  oss-image:
+    description: "Override OSS runner image tag"
+    required: false
+    default: ""
+  ai-image:
+    description: "Override identity AI image tag"
     required: false
     default: ""
 
@@ -140,89 +113,83 @@ runs:
     - name: Check out repository
       uses: actions/checkout@v4
 
-    - name: Ensure Docker is available
-      shell: bash
-      run: docker --version
-
-    - name: Validate compose file
-      shell: bash
-      run: docker compose -f docker-compose.marketplace.yml config
-
     - name: Prepare environment variables
       shell: bash
       run: |
         set -euo pipefail
-        HOST_IP="${{ inputs.host_ip }}"
-        FRONT_PORT="${{ inputs.front_port }}"
-        ANALYZER_PORT="${{ inputs.analyzer_port }}"
-        COLLECTOR_PORT="${{ inputs.collector_port }}"
-        COM_SHOW_PORT="${{ inputs.com_show_port }}"
-        COM_AUDIT_PORT="${{ inputs.com_audit_port }}"
-        LINEAGE_PORT="${{ inputs.lineage_port }}"
-        OSS_PORT="${{ inputs.oss_port }}"
-        AI_PORT="${{ inputs.ai_port }}"
+        BASE="${{ inputs['host-base'] }}"
+        FRONT_PORT="${{ inputs['front-port'] }}"
+        ANALYZER_PORT="${{ inputs['analyzer-port'] }}"
+        COLLECTOR_PORT="${{ inputs['collector-port'] }}"
+        COM_SHOW_PORT="${{ inputs['com-show-port'] }}"
+        COM_AUDIT_PORT="${{ inputs['com-audit-port'] }}"
+        LINEAGE_PORT="${{ inputs['lineage-port'] }}"
+        OSS_PORT="${{ inputs['oss-port'] }}"
+        AI_PORT="${{ inputs['ai-port'] }}"
 
-        PUBLIC_BASE="${{ inputs.public_base }}"
-        [ -n "$PUBLIC_BASE" ] || PUBLIC_BASE="http://localhost:${FRONT_PORT}"
+        echo "HOST_IP=${BASE}" >> "$GITHUB_ENV"
+        echo "PUBLIC_BASE=${BASE}:${FRONT_PORT}" >> "$GITHUB_ENV"
+        echo "FRONT_PORT=${FRONT_PORT}" >> "$GITHUB_ENV"
 
-        ANALYZER_URL="${{ inputs.analyzer_url }}"
-        [ -n "$ANALYZER_URL" ] || ANALYZER_URL="http://${HOST_IP}:${ANALYZER_PORT}"
+        echo "ANALYZER_PORT=${ANALYZER_PORT}" >> "$GITHUB_ENV"
+        echo "ANALYZER_URL=${BASE}:${ANALYZER_PORT}" >> "$GITHUB_ENV"
+        echo "SAGE_HOST=${BASE}" >> "$GITHUB_ENV"
+        echo "PII_MODEL_URL=${{ inputs['pii-model-url'] }}" >> "$GITHUB_ENV"
 
-        COLLECTOR_URL="${{ inputs.collector_url }}"
-        [ -n "$COLLECTOR_URL" ] || COLLECTOR_URL="http://${HOST_IP}:${COLLECTOR_PORT}"
+        echo "COLLECTOR_PORT=${COLLECTOR_PORT}" >> "$GITHUB_ENV"
+        echo "COLLECTOR_URL=${BASE}:${COLLECTOR_PORT}" >> "$GITHUB_ENV"
+        echo "AWS_REGION=${{ inputs['aws-region'] }}" >> "$GITHUB_ENV"
+        echo "AWS_DEFAULT_REGION=${{ inputs['aws-region'] }}" >> "$GITHUB_ENV"
 
-        COM_SHOW_URL="${{ inputs.com_show_url }}"
-        [ -n "$COM_SHOW_URL" ] || COM_SHOW_URL="http://${HOST_IP}:${COM_SHOW_PORT}"
+        echo "COM_SHOW_PORT=${COM_SHOW_PORT}" >> "$GITHUB_ENV"
+        echo "COM_SHOW_URL=${BASE}:${COM_SHOW_PORT}" >> "$GITHUB_ENV"
 
-        COM_AUDIT_URL="${{ inputs.com_audit_url }}"
-        [ -n "$COM_AUDIT_URL" ] || COM_AUDIT_URL="http://${HOST_IP}:${COM_AUDIT_PORT}"
+        echo "COM_AUDIT_PORT=${COM_AUDIT_PORT}" >> "$GITHUB_ENV"
+        echo "COM_AUDIT_URL=${BASE}:${COM_AUDIT_PORT}" >> "$GITHUB_ENV"
 
-        LINEAGE_URL="${{ inputs.lineage_url }}"
-        [ -n "$LINEAGE_URL" ] || LINEAGE_URL="http://${HOST_IP}:${LINEAGE_PORT}"
+        echo "LINEAGE_PORT=${LINEAGE_PORT}" >> "$GITHUB_ENV"
+        echo "LINEAGE_URL=${BASE}:${LINEAGE_PORT}" >> "$GITHUB_ENV"
 
-        OSS_URL="${{ inputs.oss_url }}"
-        [ -n "$OSS_URL" ] || OSS_URL="http://${HOST_IP}:${OSS_PORT}"
+        echo "OSS_PORT=${OSS_PORT}" >> "$GITHUB_ENV"
+        echo "OSS_URL=${BASE}:${OSS_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_OSS_BASE=${BASE}:${OSS_PORT}/oss" >> "$GITHUB_ENV"
+        echo "REACT_APP_OSS_WORKDIR=${{ inputs['oss-workdir'] }}" >> "$GITHUB_ENV"
 
-        cat <<'EOF' >> "$GITHUB_ENV"
-SAGE_FRONT_IMAGE=${{ inputs.front_image }}
-SAGE_ANALYZER_IMAGE=${{ inputs.analyzer_image }}
-SAGE_COLLECTOR_IMAGE=${{ inputs.collector_image }}
-SAGE_COM_SHOW_IMAGE=${{ inputs.com_show_image }}
-SAGE_COM_AUDIT_IMAGE=${{ inputs.com_audit_image }}
-SAGE_LINEAGE_IMAGE=${{ inputs.lineage_image }}
-SAGE_OSS_IMAGE=${{ inputs.oss_image }}
-SAGE_AI_IMAGE=${{ inputs.ai_image }}
+        echo "AI_PORT=${AI_PORT}" >> "$GITHUB_ENV"
 
-FRONT_PORT=${FRONT_PORT}
-ANALYZER_PORT=${ANALYZER_PORT}
-COLLECTOR_PORT=${COLLECTOR_PORT}
-COM_SHOW_PORT=${COM_SHOW_PORT}
-COM_AUDIT_PORT=${COM_AUDIT_PORT}
-LINEAGE_PORT=${LINEAGE_PORT}
-OSS_PORT=${OSS_PORT}
-AI_PORT=${AI_PORT}
+        echo "REACT_APP_API_HOST=${BASE}" >> "$GITHUB_ENV"
+        echo "REACT_APP_AEGIS_API_BASE=${BASE}:${ANALYZER_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_COLLECTOR_API_BASE=${BASE}:${COLLECTOR_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_INVENTORY_API_BASE=${BASE}:${COLLECTOR_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_COMPLIANCE_API_BASE=${BASE}:${COM_SHOW_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_AUDIT_API_BASE=${BASE}:${COM_AUDIT_PORT}" >> "$GITHUB_ENV"
+        echo "REACT_APP_LINEAGE_API_BASE=${BASE}:${LINEAGE_PORT}" >> "$GITHUB_ENV"
 
-PUBLIC_BASE=${PUBLIC_BASE}
-HOST_IP=${HOST_IP}
-ANALYZER_URL=${ANALYZER_URL}
-COLLECTOR_URL=${COLLECTOR_URL}
-COM_SHOW_URL=${COM_SHOW_URL}
-COM_AUDIT_URL=${COM_AUDIT_URL}
-LINEAGE_URL=${LINEAGE_URL}
-OSS_URL=${OSS_URL}
-REACT_APP_OSS_WORKDIR=${{ inputs.react_app_oss_workdir }}
+        echo "STEAMPIPE_DB_HOST=${{ inputs['steampipe-db-host'] }}" >> "$GITHUB_ENV"
+        echo "STEAMPIPE_DB_PORT=${{ inputs['steampipe-db-port'] }}" >> "$GITHUB_ENV"
+        echo "STEAMPIPE_DB_USER=${{ inputs['steampipe-db-user'] }}" >> "$GITHUB_ENV"
+        echo "STEAMPIPE_DB_NAME=${{ inputs['steampipe-db-name'] }}" >> "$GITHUB_ENV"
 
-PII_MODEL_URL=${{ inputs.pii_model_url }}
-AWS_REGION=${{ inputs.aws_region }}
-AWS_DEFAULT_REGION=${{ inputs.aws_region }}
-STEAMPIPE_DB_HOST=${{ inputs.steampipe_db_host }}
-STEAMPIPE_DB_PORT=${{ inputs.steampipe_db_port }}
-STEAMPIPE_DB_USER=${{ inputs.steampipe_db_user }}
-STEAMPIPE_DB_NAME=${{ inputs.steampipe_db_name }}
-SAGE_HOST=${HOST_IP}
-SAGE_HOST_IP=${HOST_IP}
-EOF
+        echo "SAGE_FRONT_IMAGE=${{ inputs['front-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_ANALYZER_IMAGE=${{ inputs['analyzer-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_COLLECTOR_IMAGE=${{ inputs['collector-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_COM_SHOW_IMAGE=${{ inputs['com-show-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_COM_AUDIT_IMAGE=${{ inputs['com-audit-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_LINEAGE_IMAGE=${{ inputs['lineage-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_OSS_IMAGE=${{ inputs['oss-image'] }}" >> "$GITHUB_ENV"
+        echo "SAGE_AI_IMAGE=${{ inputs['ai-image'] }}" >> "$GITHUB_ENV"
+
+    - name: Validate compose file
+      shell: bash
+      run: |
+        docker compose -f "${{ inputs['compose-file'] }}" config
 
     - name: Launch SAGE stack
       shell: bash
-      run: docker compose -f docker-compose.marketplace.yml up -d
+      run: |
+        docker compose -f "${{ inputs['compose-file'] }}" up -d
+
+    - name: Show service status
+      shell: bash
+      run: |
+        docker compose -f "${{ inputs['compose-file'] }}" ps
