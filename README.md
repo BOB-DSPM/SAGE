@@ -118,12 +118,42 @@ chmod +x setup.sh
 ```
 브라우저에서 `http://localhost:8080`으로 접속하여 SAGE 대시보드를 확인할 수 있습니다.
 
+### GitHub Actions Marketplace 액션 사용 예시
+`action.yml`에 포함된 Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다.
+
+```yaml
+jobs:
+  launch-sage:
+    runs-on: ubuntu-latest # Docker 사용이 가능한 러너를 선택하세요.
+    steps:
+      - uses: owner/SAGE@v1
+        with:
+          host-base: http://localhost
+          front-port: 8200
+          analyzer-port: 9000
+          collector-port: 8000
+          com-show-port: 8003
+          com-audit-port: 8103
+          lineage-port: 8300
+          oss-port: 8800
+          ai-port: 8900
+          # 필요 시 이미지 오버라이드도 추가: front-image, analyzer-image 등
+```
+
+> Marketplace에 게시하려면 `git tag v1 && git push origin v1`으로 메이저 태그를 먼저 발행하고, 리포지토리 페이지의 **Publish this Action to Marketplace** 버튼을 통해 제출하세요.
+
+#### Marketplace 제출 절차 (요약)
+1. `docker compose -f docker-compose.marketplace.yml config`로 컴포즈 파일이 유효한지 확인합니다.
+2. `git tag -l 'v*'`로 기존 태그를 확인한 뒤 `git tag v1 && git push origin v1`으로 메이저 태그를 발행합니다.
+3. 리포지토리 상단 배너 **Publish this Action to Marketplace**에서 제출을 완료합니다. (Docker 사용 가능 러너에서 동작함을 README에 명시)
+
 ---
 
 ## 📚 문서
 
 각 컴포넌트의 상세한 문서는 해당 저장소의 README를 참고하시기 바랍니다.
 
+- **[GitHub Actions Marketplace 게시 가이드](docs/github-actions-marketplace.md)** - 메인 레포만으로 Marketplace 액션을 준비하는 방법
 - **[SAGE Frontend](https://github.com/BOB-DSPM/SAGE-FRONT)** - 프론트엔드 사용자 가이드
 - **[Compliance Audit & Fix](https://github.com/BOB-DSPM/DSPM_Compliance-audit-fix)** - 컴플라이언스 감사 가이드
 - **[Compliance Show](https://github.com/BOB-DSPM/DSPM_Compliance-show)** - 컴플라이언스 보고서 가이드
