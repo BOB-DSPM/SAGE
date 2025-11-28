@@ -124,6 +124,7 @@ chmod +x setup.sh
 
 각 컴포넌트의 상세한 문서는 해당 저장소의 README를 참고하시기 바랍니다.
 
+- **[GitHub Actions Marketplace 게시 가이드](docs/github-actions-marketplace.md)** - 메인 레포만으로 Marketplace 액션을 준비하는 방법
 - **[SAGE Frontend](https://github.com/BOB-DSPM/SAGE-FRONT)** - 프론트엔드 사용자 가이드
 - **[Compliance Audit & Fix](https://github.com/BOB-DSPM/DSPM_Compliance-audit-fix)** - 컴플라이언스 감사 가이드
 - **[Compliance Show](https://github.com/BOB-DSPM/DSPM_Compliance-show)** - 컴플라이언스 보고서 가이드
