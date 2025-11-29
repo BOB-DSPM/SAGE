@@ -94,6 +94,18 @@ SAGE는 다양한 오픈소스 기술을 활용하여 구축되었습니다:
 - kubectl CLI
 - 충분한 리소스를 갖춘 Kubernetes 클러스터 (최소 4 CPU, 8GB RAM)
 
+### AWS EC2에서 바로 띄울 때 권장 사양/권한
+
+- 인스턴스: t3.large(2 vCPU/8 GB) 이상 권장, 트래픽 많으면 t3.xlarge 이상
+- 스토리지: gp3 50GB+ (Docker 이미지/로그 여유 확보)
+- OS: Ubuntu 22.04 LTS (기본 Shell/패키지 가정)
+- 네트워크: 인터넷 egress 허용(Docker Hub pull), 인바운드 포트 허용
+  - 8200(front), 9000(analyzer), 8000(collector), 8003(com-show), 8103(com-audit), 8300(lineage), 8800(oss), 8900(ai)
+- 최소 IAM 권한(인스턴스 프로파일 또는 액세스 키)
+  - AWS 리소스 점검/스캔을 쓸 경우: `SecurityAudit` AWS 관리형 정책 1개로 대부분 읽기 전용 커버
+  - CloudTrail 로그 조회가 필요하면 `AWSCloudTrail_ReadOnlyAccess` 추가
+  - 별도 자원 생성이 필요 없다면 쓰기 권한은 불필요
+
 ### 설치
 
 #### 1. 저장소 클론
