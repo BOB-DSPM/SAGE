@@ -88,11 +88,12 @@ SAGE는 다양한 오픈소스 기술을 활용하여 구축되었습니다:
 
 ### 사전 요구사항
 
-시작하기 전에 다음 환경이 준비되어 있어야 합니다:
+로컬/베어메탈(EC2 포함)에서 Docker Compose로 바로 올리는 구성을 기준으로 합니다.
 
-- Kubernetes v1.24 이상
-- kubectl CLI
-- 충분한 리소스를 갖춘 Kubernetes 클러스터 (최소 4 CPU, 8GB RAM)
+- Linux 호스트 (Ubuntu/Debian 계열 권장)
+- Docker & Docker Compose (없으면 스크립트가 자동 설치)
+- 포트 여유: 8200(front), 9000(analyzer), 8000(collector), 8003(com-show), 8103(com-audit), 8300(lineage), 8800(oss), 8900(ai)
+- Docker Hub 이미지를 풀(Pull)할 수 있는 인터넷 egress
 
 ### AWS EC2에서 바로 띄울 때 권장 사양/권한
 
@@ -114,21 +115,21 @@ git clone https://github.com/BOB-DSPM/SAGE.git
 cd SAGE
 ```
 
-#### 2. 자동 설치
-SAGE는 모든 컴포넌트를 한 번에 설치할 수 있는 자동 설치 스크립트를 제공합니다.
+#### 2. 스택 기동
+`setup.sh`가 현재 서버 IP를 자동 감지해 `.sage-stack.env`를 생성하고, 필요한 경우 Docker/Compose를 설치한 뒤 전체 스택을 띄웁니다.
 
 ```bash
-# setup.sh를 실행하여 모든 컴포넌트 자동 설치
 chmod +x setup.sh
-./setup.sh
+./setup.sh       # sudo가 필요할 수 있습니다
 ```
 
-#### 3. 설치 확인
-```bash
-# 설치된 컴포넌트 확인
-./check_status.sh
-```
-브라우저에서 `http://localhost:8080`으로 접속하여 SAGE 대시보드를 확인할 수 있습니다.
+- 기본 공개 URL: `http://<서버_IP>:8200` (Frontend)
+- 개별 API: Analyzer `:9000`, Collector `:8000`, Compliance-show `:8003`, Compliance-audit `:8103`, Lineage `:8300`, OSS `:8800`, AI `:8900`
+
+실행 전에 필요한 값이 있으면 환경변수로 오버라이드하세요. 예:  
+`AWS_REGION=ap-northeast-2 FRONT_PORT=8282 SAGE_HOST_IP=1.2.3.4 ./setup.sh`
+
+스택 중지: `docker compose --env-file .sage-stack.env -f docker-compose.marketplace.yml down`
 
 ### GitHub Actions Marketplace 액션 사용 예시
 루트의 `action.yml` Composite 액션으로 Docker Compose 기반 SAGE 스택을 한 번에 띄울 수 있습니다. 
