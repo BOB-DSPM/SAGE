@@ -60,7 +60,7 @@ SAGE는 다음의 컴포넌트들로 구성됩니다:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Kubernetes Cluster                       │
+│                DockerContainer/K8s Cluster                  │
 ├─────────────────┬─────────────────┬─────────────────────────┤
 │  Compliance     │  Data Lineage   │  Data Classification    │
 │  Audit & Fix    │  Tracking       │  & Identification       │
