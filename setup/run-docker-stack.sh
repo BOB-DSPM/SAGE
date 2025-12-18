@@ -6,6 +6,7 @@ COMPOSE_FILE="${ROOT_DIR}/docker-compose.marketplace.yml"
 ENV_FILE="${ROOT_DIR}/.sage-stack.env"
 COMPOSE_BIN=()
 DOCKER_PREFIX=()
+AI_PROFILE_ENABLED=0
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 die() { echo "[$(date '+%H:%M:%S')] ❌ $*" >&2; exit 1; }
@@ -96,6 +97,17 @@ set_compose_bin() {
       die "docker compose CLI를 찾을 수 없습니다. docker compose 또는 docker-compose 중 하나가 필요합니다."
     fi
   fi
+}
+
+detect_ai_profile() {
+  # docker compose는 COMPOSE_PROFILES 환경변수(콤마/공백/콜론 구분)를 사용해 profile을 선택한다.
+  local profiles="${COMPOSE_PROFILES:-}"
+  profiles="${profiles// /,}"
+  profiles="${profiles//:/,}"
+  case ",${profiles}," in
+    *",ai,"*) AI_PROFILE_ENABLED=1 ;;
+    *) AI_PROFILE_ENABLED=0 ;;
+  esac
 }
 
 detect_ip() {
@@ -193,6 +205,9 @@ EOF
 
 bring_up_stack() {
   log "이미지 풀 및 컨테이너 기동 (환경 파일: ${ENV_FILE})"
+  if [ "${AI_PROFILE_ENABLED}" -eq 0 ]; then
+    log "AI 서비스는 기본 비활성화 상태입니다. 활성화하려면 COMPOSE_PROFILES=ai ./setup.sh 형태로 실행하세요."
+  fi
   "${COMPOSE_BIN[@]}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
   "${COMPOSE_BIN[@]}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 }
@@ -209,7 +224,7 @@ SAGE Docker 스택 기동 완료 ✅
  - Compliance-audit:    ${COM_AUDIT_URL}
  - Lineage API:         ${LINEAGE_URL}
  - OSS Runner API:      ${OSS_URL}
- - AI API:              ${AI_URL}
+ - AI API:              $(if [ "${AI_PROFILE_ENABLED}" -eq 1 ]; then echo "${AI_URL}"; else echo "비활성화 (COMPOSE_PROFILES=ai 로 활성화)"; fi)
 
 docker compose down 시:
   ${COMPOSE_BIN[*]} --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
@@ -223,6 +238,7 @@ EOF
 main() {
   ensure_requirements
   [ -f "${COMPOSE_FILE}" ] || die "구성 파일(${COMPOSE_FILE})을 찾을 수 없습니다."
+  detect_ai_profile
 
   local ip
   ip="$(detect_ip)"
